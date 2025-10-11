@@ -1,0 +1,13 @@
+{
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true,
+    "source.organizeImports": true
+  },
+  "editor.formatOnSave": true,
+  "eslint.autoFixOnSave": true,
+  "typescript.preferences.organizeImports": true,
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/dist": true
+  }
+}
