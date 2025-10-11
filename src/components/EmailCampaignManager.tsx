@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import communicationService from '../services/communicationService';
 import type { BulkCommunicationData } from '../services/communicationService';
 import type { Customer } from '../services/customerService';
-import { useAppData } from '../contexts';
+import { useAppData } from '../contexts/AppDataContext';
 
 interface EmailTemplate {
   id: string;
