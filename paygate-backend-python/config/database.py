@@ -1,0 +1,34 @@
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
+from config.settings import settings
+from sqlalchemy.pool import AsyncAdaptedQueuePool
+
+# Create async engine with optimized connection pooling
+engine = create_async_engine(
+    settings.DATABASE_URL,
+    echo=True,  # Set to False in production
+    poolclass=AsyncAdaptedQueuePool,
+    pool_size=20,  # Number of connections to maintain in the pool
+    max_overflow=30,  # Number of additional connections beyond pool_size
+    pool_pre_ping=True,  # Verify connections before using them
+    pool_recycle=3600,  # Recycle connections after 1 hour
+    connect_args={
+        "check_same_thread": False,  # Needed for SQLite
+        "timeout": 30  # Connection timeout in seconds
+    }
+)
+
+# Create async session
+AsyncSessionLocal = sessionmaker(
+    engine, 
+    class_=AsyncSession, 
+    expire_on_commit=False
+)
+
+Base = declarative_base()
+
+# Dependency to get DB session
+async def get_db():
+    async with AsyncSessionLocal() as session:
+        yield session

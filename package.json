@@ -18,11 +18,13 @@
     "autoprefixer": "^10.4.21",
     "axios": "^1.7.9",
     "concurrently": "^9.2.1",
+    "i18next": "^25.6.0",
     "postcss": "^8.5.6",
     "react": "^19.1.1",
     "react-apexcharts": "^1.7.0",
     "react-dom": "^19.1.1",
     "react-dropzone": "^14.3.8",
+    "react-i18next": "^16.0.1",
     "react-is": "^19.1.1",
     "react-router-dom": "^7.8.2",
     "recharts": "^3.1.2",
@@ -32,16 +34,15 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "vite",
-    "build": "tsc && vite build",
-    "serve": "vite preview",
-    "test": "vitest",
-    "lint": "eslint src/**/*.tsx src/**/*.ts",
-    "lint:fix": "eslint src/**/*.tsx src/**/*.ts --fix",
-    "format": "prettier --write src/**/*.{ts,tsx,js,jsx,json,css,scss}",
-    "format:check": "prettier --check src/**/*.{ts,tsx,js,jsx,json,css,scss}",
-    "clean": "npm run lint:fix && npm run format",
-    "clean:all": "npm run clean && npx ts-unused-exports tsconfig.json --removeUnusedExports"
+    "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
+    "frontend": "cd paygate-ui && npm run start",
+    "backend": "cd paygate-backend-python && python -m uvicorn main:app --host 127.0.0.1 --port 8000 --reload",
+    "build": "cd paygate-ui && npm run build",
+    "test": "cd paygate-ui && npm test",
+    "lint": "cd paygate-ui && npm run lint",
+    "lint:fix": "cd paygate-ui && npm run lint:fix",
+    "format": "cd paygate-ui && npm run format",
+    "format:check": "cd paygate-ui && npm run format:check"
   },
   "browserslist": {
     "production": [
@@ -56,6 +57,8 @@
     ]
   },
   "devDependencies": {
+    "@playwright/experimental-ct-react": "^1.56.0",
+    "@playwright/test": "^1.56.0",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.1.3",

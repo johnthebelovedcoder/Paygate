@@ -1,0 +1,115 @@
+/* Mobile and responsive improvements */
+
+/* Hide scrollbar for mobile but maintain functionality */
+.hide-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari, Opera */
+}
+
+/* Touch-friendly adjustments */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+  /* Minimum touch target size for mobile */
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 640px) {
+  .mobile-responsive-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .tablet-responsive-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Slide animation for mobile views */
+.slide-in {
+  transform: translateX(0);
+  transition: transform 0.3s ease-in-out;
+}
+
+.slide-out-left {
+  transform: translateX(-100%);
+}
+
+.slide-out-right {
+  transform: translateX(100%);
+}
+
+/* Mobile modal adjustments */
+.mobile-modal-full {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+}
+
+/* Adjustments for mobile touch areas */
+.mobile-touch-area {
+  padding: 0.75rem;
+}
+
+/* Responsive typography */
+.responsive-text {
+  font-size: clamp(0.875rem, 2.5vw, 1.125rem);
+}
+
+/* Mobile-friendly spacing */
+.mobile-spacing {
+  padding: 0.5rem;
+  margin: 0.25rem;
+}
+
+/* Hamburger menu styles */
+.hamburger {
+  cursor: pointer;
+  width: 24px;
+  height: 24px;
+  transition: all 0.25s;
+  position: relative;
+}
+
+.hamburger .line {
+  position: absolute;
+  height: 2px;
+  width: 100%;
+  background-color: #333;
+  border-radius: 2px;
+  left: 0;
+  transform-origin: center;
+  transition: all 0.25s;
+}
+
+.hamburger .line:nth-child(1) {
+  top: 2px;
+}
+
+.hamburger .line:nth-child(2) {
+  top: 11px;
+}
+
+.hamburger .line:nth-child(3) {
+  top: 20px;
+}
+
+.hamburger.active .line:nth-child(1) {
+  transform: translateY(9px) rotate(45deg);
+}
+
+.hamburger.active .line:nth-child(2) {
+  opacity: 0;
+}
+
+.hamburger.active .line:nth-child(3) {
+  transform: translateY(-9px) rotate(-45deg);
+}
