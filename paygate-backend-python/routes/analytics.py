@@ -126,6 +126,15 @@ async def update_creator_content_protection_settings(
     return {"status": "success", "settings": updated_settings}
 
 
+@router.get("/analytics/revenue-forecast", response_model=List[RevenueForecast])
+async def get_revenue_forecast_public(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    forecast = await analytics_service.get_revenue_forecast(db, current_user.id)
+    return forecast
+
+
 @router.get("/analytics/creator/revenue-forecast", response_model=List[RevenueForecast])
 async def get_revenue_forecast(
     current_user: User = Depends(get_current_user),

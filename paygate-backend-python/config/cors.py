@@ -56,6 +56,7 @@ def setup_cors(app: ASGIApp) -> None:
         allow_credentials=True,
         allow_methods=ALLOWED_METHODS,
         allow_headers=ALLOWED_HEADERS,
-        expose_headers=["*"],  # Expose all headers to the browser
+        # Expose authorization header to allow authentication to work in browser
+        expose_headers=["Access-Control-Allow-Origin", "Authorization", "Content-Disposition", "Content-Type", "X-Total-Count"],
         max_age=600,  # 10 minutes
     )
