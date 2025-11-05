@@ -5,7 +5,7 @@ from models import Payment, Paywall
 from schemas import *
 from services import payment_service, paywall_service, customer_service
 from utils.auth import get_current_user
-from typing import List
+from typing import List, Dict, Any
 import uuid
 from datetime import datetime
 
@@ -56,18 +56,26 @@ async def create_payment(
     )
 
 
-@router.get("/payments/", response_model=List[Payment])
-@router.get("/payments", response_model=List[Payment])
+@router.get("/payments/recent", response_model=Dict[str, List[Payment]])
 async def get_recent_payments(
     limit: int = 5,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     payments = await payment_service.get_recent_payments(db, current_user.id, limit)
-    return payments
+    return {"data": payments}
 
 
-@router.get("/payments/{reference}", response_model=Payment)
+@router.get("/payments", response_model=Dict[str, List[Payment]])
+async def get_payments(
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    payments = await payment_service.get_payments_by_owner(db, current_user.id)
+    return {"data": payments}
+
+
+@router.get("/payments/{reference}", response_model=Dict[str, Payment])
 async def get_payment(
     reference: str,
     current_user: dict = Depends(get_current_user),
@@ -79,10 +87,10 @@ async def get_payment(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Payment not found"
         )
-    return payment
+    return {"data": payment}
 
 
-@router.get("/payments/verify/{reference}", response_model=dict)
+@router.get("/payments/verify/{reference}")
 async def verify_payment(
     reference: str,
     current_user: dict = Depends(get_current_user),
@@ -96,20 +104,22 @@ async def verify_payment(
         )
     
     # In a real implementation, this would call Paystack to verify the payment
-    # For now, return mock data
+    # For now, return mock data in the expected format
     return {
-        "payment": payment,
-        "paystack_data": {
-            "status": "success",
-            "message": "Payment verified",
-            "data": {
-                "reference": reference,
+        "data": {
+            "payment": payment,
+            "paystack_data": {
                 "status": "success",
-                "amount": payment.amount,
-                "currency": payment.currency,
-                "customer": {
-                    "email": payment.customer_email,
-                    "name": payment.customer_name
+                "message": "Payment verified",
+                "data": {
+                    "reference": reference,
+                    "status": "success",
+                    "amount": payment.amount,
+                    "currency": payment.currency,
+                    "customer": {
+                        "email": payment.customer_email,
+                        "name": payment.customer_name
+                    }
                 }
             }
         }

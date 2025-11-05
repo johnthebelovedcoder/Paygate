@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import customerService, { type Customer } from '../services/customerService';
 import paymentService, { type Payment } from '../services/paymentService';
-import { useAppData } from '../contexts';
+import { useAuth } from '../contexts/AuthContext';
 import type { AxiosError } from 'axios';
 
 function isAxiosError(error: unknown): error is AxiosError {
@@ -25,7 +25,7 @@ interface UseRecentActivityReturn {
 }
 
 const useRecentActivity = (): UseRecentActivityReturn => {
-  const { paywalls } = useAppData();
+  const { isAuthenticated, authInitialized } = useAuth();
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +33,19 @@ const useRecentActivity = (): UseRecentActivityReturn => {
   useEffect(() => {
     const fetchActivity = async () => {
       try {
+        // Wait for auth to be initialized before proceeding
+        if (!authInitialized) {
+          console.debug('Auth not initialized yet, skipping recent activity fetch');
+          return;
+        }
+        
+        // Only attempt to fetch data if we're authenticated
+        if (!isAuthenticated) {
+          console.warn('Skipping recent activity fetch: Not authenticated');
+          setLoading(false);
+          return;
+        }
+
         setLoading(true);
         setError(null);
 
@@ -175,12 +188,17 @@ const useRecentActivity = (): UseRecentActivityReturn => {
       }
     };
 
-    fetchActivity();
-  }, [paywalls]);
+    if (authInitialized) {
+      fetchActivity();
+    }
+  }, [authInitialized, isAuthenticated]);
+
+  // Return loading state while auth is initializing
+  const effectiveLoading = authInitialized ? loading : true;
 
   return {
     activities,
-    loading,
+    loading: effectiveLoading,
     error,
   };
 };

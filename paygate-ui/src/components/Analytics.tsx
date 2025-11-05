@@ -35,7 +35,7 @@ const Analytics: React.FC = () => {
 
   // Sample data for charts - needs to be replaced with actual data
   const revenueChartData = toChartData(revenueData);
-  const topPaywallsData = topPaywalls?.map(pw => ({ name: pw.title, value: pw.revenue })) || [];
+  const topPaywallsData = (topPaywalls && Array.isArray(topPaywalls) ? topPaywalls.map(pw => ({ name: pw.title, value: pw.revenue })) : []) || [];
 
   if (loading) {
     return (
@@ -299,7 +299,7 @@ const Analytics: React.FC = () => {
                       Top Paywalls
                     </h3>
                     <div className="space-y-4">
-                      {topPaywalls.slice(0, 3).map(paywall => (
+                      {(topPaywalls && Array.isArray(topPaywalls) ? topPaywalls : []).slice(0, 3).map(paywall => (
                         <div key={paywall.id} className="flex justify-between items-center">
                           <div>
                             <p className="font-medium text-gray-900 dark:text-white">

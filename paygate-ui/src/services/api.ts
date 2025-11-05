@@ -1,65 +1,173 @@
 // api.ts - Central API configuration and service
-import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios';
+import axios, { 
+  type AxiosInstance, 
+  type AxiosRequestConfig, 
+  type AxiosResponse, 
+  type InternalAxiosRequestConfig,
+  type AxiosError
+} from 'axios';
 import { apiThrottler } from '../utils/throttle.utils';
 import { isTokenExpired } from '../utils/auth.utils';
 import errorHandler from '../utils/error.utils';
+import config, { isPublicEndpoint } from '../config/env.config';
+
+declare module 'axios' {
+  interface AxiosRequestConfig {
+    _skipAuth?: boolean;
+  }
+}
 
 // Create axios instance with default configuration
+// Create axios instance with configuration
 const api: AxiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api',
-  timeout: 30000, // Increased timeout
+  baseURL: config.api.baseUrl,
+  timeout: config.api.timeout,
   headers: {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest',
   },
-  // Add this to ensure credentials are handled properly
-  withCredentials: true,
+  withCredentials: config.api.withCredentials,
+  xsrfCookieName: config.api.xsrfCookieName,
+  xsrfHeaderName: config.api.xsrfHeaderName,
 });
+
+// Type for the refresh token queue
+type FailedQueueItem = {
+  resolve: (token: string) => void;
+  reject: (error: Error) => void;
+};
 
 // Helper function to determine if a URL requires authentication
 const requiresAuth = (url: string): boolean => {
-  // List of endpoints that don't require authentication
-  const publicEndpoints = [
-    '/auth/login',
-    '/auth/register', 
-    '/auth/forgotpassword',
-    '/auth/resetpassword',
-    '/auth/refresh',
-    '/auth/logout',
-    '/auth/mfa/setup',
-    '/auth/mfa/verify',
-    '/auth/verify-email/',
-    '/health',
-    '/status',
-  ];
+  if (!url) return false;
+  return !isPublicEndpoint(url);
+};
 
-  // Normalize URL by removing query parameters and ensuring it starts with slash
-  let normalizedUrl = url.split('?')[0];
-  if (!normalizedUrl.startsWith('/')) {
-    normalizedUrl = '/' + normalizedUrl;
-  }
-  return !publicEndpoints.some(endpoint => normalizedUrl?.startsWith(endpoint));
+// Track if we're already refreshing to prevent multiple refresh attempts
+let isRefreshing = false;
+let failedQueue: FailedQueueItem[] = [];
+
+const processQueue = (error: Error | null, token: string | null = null) => {
+  failedQueue.forEach(({ resolve, reject }) => {
+    if (error) {
+      reject(error);
+    } else if (token) {
+      resolve(token);
+    } else {
+      reject(new Error('No token provided'));
+    }
+  });
+  failedQueue = [];
 };
 
 // Request interceptor to add auth token
 api.interceptors.request.use(
-  config => {
-    // Get access token from localStorage
-    const token = localStorage.getItem('access_token');
-
-    // Only add auth header if the endpoint requires authentication
-    if (token && requiresAuth(config.url || '')) {
-      // Check if token is expired
-      if (isTokenExpired(token)) {
-        console.warn('Token expired, attempting refresh...');
-        // Token refresh will be handled by response interceptor
-      } else {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-    } else if (!token && requiresAuth(config.url || '')) {
-      console.warn(`No auth token found for protected endpoint: ${config.url}`);
+  async (config: InternalAxiosRequestConfig) => {
+    // Skip auth for public endpoints or explicitly skipped requests
+    if (config._skipAuth || !requiresAuth(config.url || '')) {
+      return config;
     }
 
-    return config;
+    // Get access token from localStorage
+    const token = localStorage.getItem('access_token');
+    
+    // If no token and the endpoint requires auth, prevent the request
+    if (!token) {
+      console.warn(`Blocking request to protected endpoint (no token): ${config.url}`);
+      throw new Error('No authentication token available');
+    }
+
+    // Add authorization header if not already set
+    if (!config.headers.Authorization) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    // If token is not expired, proceed with the request
+    if (!isTokenExpired(token)) {
+      return config;
+    }
+
+    // Token is expired, handle refresh
+    // If we're already refreshing, queue the request
+    if (isRefreshing) {
+      return new Promise((resolve, reject) => {
+        failedQueue.push({ resolve, reject });
+      })
+      .then(token => {
+        if (token) {
+          if (config.headers) {
+            config.headers.Authorization = `Bearer ${token}`;
+          }
+        }
+        return config;
+      })
+      .catch(err => {
+        return Promise.reject(err);
+      });
+    }
+
+    // Set flag to prevent multiple refresh attempts
+    isRefreshing = true;
+    
+    try {
+      const refreshToken = localStorage.getItem('refresh_token');
+      if (!refreshToken) {
+        throw new Error('No refresh token available');
+      }
+
+      // Make refresh request
+      const response = await axios.post<{ 
+        access_token: string;
+        refresh_token?: string;
+      }>(
+        `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/auth/refresh-token`,
+        { refresh_token: refreshToken },
+        { 
+          _skipAuth: true,
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          timeout: 10000 // 10 second timeout
+        }
+      );
+      
+      if (response.data.access_token) {
+        // Update tokens
+        localStorage.setItem('access_token', response.data.access_token);
+        if (response.data.refresh_token) {
+          localStorage.setItem('refresh_token', response.data.refresh_token);
+        }
+        
+        // Update the token for the original request
+        config.headers.Authorization = `Bearer ${response.data.access_token}`;
+        
+        // Process any queued requests with the new token
+        processQueue(null, response.data.access_token);
+        
+        return config;
+      }
+      
+      throw new Error('Invalid refresh token response');
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      // Process any queued requests with the error
+      processQueue(error);
+      
+      // Clear auth state
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      
+      // Redirect to login
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+      
+      throw new Error('Session expired. Please log in again.');
+    } finally {
+      isRefreshing = false;
+    }
   },
   error => {
     errorHandler.log(error, 'Request Interceptor');
@@ -73,52 +181,103 @@ api.interceptors.response.use(
     return response.data;
   },
   async error => {
+    const originalRequest = error.config;
+    
+    // Add request retry logic for failed requests
+    if (error.response?.status >= 500 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      
+      // Add a small delay before retrying
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Retry the request
+      return api(originalRequest);
+    }
+    
+    // For all other errors, return a user-friendly message
+    if (error.response?.data?.message) {
+      error.message = error.response.data.message;
+    } else if (!error.message) {
+      error.message = 'An unexpected error occurred. Please try again later.';
+    }
+
     errorHandler.log(error, 'API Response');
 
-    // Handle network errors (includes service worker fetch failures)
+    // Handle 404 Not Found errors
+    if (error.response?.status === 404) {
+      console.warn(`Resource not found: ${error.config.url}`);
+      // Return empty data structure instead of failing
+      if (error.config.url?.includes('/communications')) {
+        return Promise.resolve({ data: [], count: 0 });
+      } else if (error.config.url?.includes('/support/statistics')) {
+        return Promise.resolve({
+          openTickets: 0,
+          closedTickets: 0,
+          inProgressTickets: 0,
+          averageResponseTime: 0
+        });
+      }
+      return Promise.reject(new Error(`Resource not found: ${error.config.url}`));
+    }
+
+    // Handle network errors (includes service worker fetch failure)
     if (!error.response && error.request) {
       console.warn('Network error or service worker fetch failed:', error.message);
       // Don't redirect on network errors, let the UI handle it
       return Promise.reject(error);
     }
 
+    // Handle 401 Unauthorized errors
     if (error.response?.status === 401) {
-      // Remove invalid tokens from local storage
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
-      localStorage.removeItem('user');
+      // If this is a refresh token request that failed, clear everything and redirect to login
+      if (error.config.url?.includes('/auth/refresh')) {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+        return Promise.reject(new Error('Session expired. Please log in again.'));
+      }
 
-      // Check if the request URL is not the refresh endpoint to avoid infinite loops
-      if (error.config.url && !error.config.url.includes('/auth/refresh')) {
-        // Try to refresh the token if refresh endpoint exists
+      // For other 401 errors, try to refresh the token
+      const refreshToken = localStorage.getItem('refresh_token');
+      if (refreshToken) {
         try {
-          const refreshToken = localStorage.getItem('refresh_token');
-          if (refreshToken) {
-            const refreshResponse = await apiService.post(
-              '/auth/refresh',
-              { refreshToken: refreshToken },
-              { headers: { 'Content-Type': 'application/json' } }
-            );
+          const refreshResponse = await axios.post<{ 
+            access_token: string;
+            refresh_token?: string;
+          }>(
+            `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/auth/refresh`,
+            { refreshToken },
+            { _skipAuth: true }
+          );
 
-            if (refreshResponse.data?.access_token && refreshResponse.data?.refresh_token) {
-              // Update tokens in local storage
-              localStorage.setItem('access_token', refreshResponse.data.access_token);
+          if (refreshResponse.data?.access_token) {
+            // Update tokens in local storage
+            localStorage.setItem('access_token', refreshResponse.data.access_token);
+            if (refreshResponse.data.refresh_token) {
               localStorage.setItem('refresh_token', refreshResponse.data.refresh_token);
-
-              // Retry the original request with the new token
-              const originalRequest = error.config;
-              originalRequest.headers.Authorization = `Bearer ${refreshResponse.data.access_token}`;
-              return api(originalRequest);
             }
-          } else {
-            console.warn('No refresh token available. Redirecting to login.');
-            window.location.href = '/login';
+
+            // Retry the original request with the new token
+            const originalRequest = error.config;
+            originalRequest.headers.Authorization = `Bearer ${refreshResponse.data.access_token}`;
+            return api(originalRequest);
           }
         } catch (refreshError) {
           console.warn('Token refresh failed. Redirecting to login.');
-
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          localStorage.removeItem('user');
           window.location.href = '/login';
+          return Promise.reject(new Error('Session expired. Please log in again.'));
         }
+      } else {
+        console.warn('No refresh token available. Redirecting to login.');
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+        return Promise.reject(new Error('Session expired. Please log in again.'));
       }
     } else if (error.response?.status === 429) {
       console.error('Rate limit exceeded.');
@@ -147,7 +306,13 @@ export const apiService = {
     apiThrottler.add(() => api.delete(url, { ...config, withCredentials: true })),
 };
 
+// Add getAxiosInstance to the apiService
+const apiServiceWithInstance = {
+  ...apiService,
+  getAxiosInstance: () => api,
+};
+
 // Export the axios instance for direct use (e.g., for file uploads)
 export { api };
 
-export default apiService;
+export default apiServiceWithInstance;

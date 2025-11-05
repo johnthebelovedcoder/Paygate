@@ -1,5 +1,5 @@
-import React, { Suspense, useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import React, { Suspense, useEffect, useState } from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import {
   AuthProvider,
   useAuth,
@@ -11,8 +11,10 @@ import {
 } from './contexts';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { MobileOptimizationProvider } from './contexts/MobileOptimizationContext';
+import useDevLogger from './hooks/useDevLogger';
 import Navigation from './components/Navigation';
-import ComprehensiveDashboard from './components/ComprehensiveDashboard';
+import SimpleDashboard from './components/SimpleDashboard';
+import EnhancedDashboard from './components/EnhancedDashboard';
 import EnhancedPaywallCreator from './components/EnhancedPaywallCreator';
 import PaywallDetails from './components/PaywallDetails';
 import EditPaywall from './components/EditPaywall';
@@ -26,9 +28,12 @@ import ResetPassword from './components/ResetPassword';
 import ContentManagementDashboard from './components/ContentManagementDashboard';
 import ErrorBoundary from './components/ErrorBoundary';
 import EmailVerification from './components/EmailVerification';
+import PaywallDemo from './components/paywall/PaywallDemo';
+import MockPaywallCreator from './components/MockPaywallCreator';
 
 // Lazy load less frequently used components
-const Analytics = React.lazy(() => import('./components/Analytics'));
+const AnalyticsPage = React.lazy(() => import('./components/AnalyticsPage'));
+const SimpleAnalyticsDashboard = React.lazy(() => import('./components/SimpleAnalyticsDashboard'));
 const Settings = React.lazy(() => import('./components/Settings'));
 const MarketingHub = React.lazy(() => import('./components/MarketingHub'));
 const CustomersPage = React.lazy(() => import('./components/CustomersPage'));
@@ -37,6 +42,7 @@ const SubscriptionPage = React.lazy(() => import('./components/SubscriptionPage'
 const PaywallSuccess = React.lazy(() => import('./components/PaywallSuccess'));
 const Profile = React.lazy(() => import('./components/Profile'));
 const NotificationsPage = React.lazy(() => import('./components/NotificationsPage'));
+const Help = React.lazy(() => import('./components/Help'));
 
 // Loading component for suspense fallback
 const LoadingSpinner = () => (
@@ -47,15 +53,23 @@ const LoadingSpinner = () => (
 
 // Protected route component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isLoading, isAuthenticated } = useAuth();
+  const { isLoading, isAuthenticated, authInitialized } = useAuth();
+  const location = useLocation();
 
-  if (isLoading) {
+  // Show loading spinner while checking auth
+  if (isLoading || !authInitialized) {
     return <LoadingSpinner />;
   }
 
-  // Redirect to login if not authenticated
+  // If not authenticated, redirect to login with the return URL
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return (
+      <Navigate 
+        to={`/login`} 
+        state={{ from: location }} 
+        replace 
+      />
+    );
   }
 
   return <>{children}</>;
@@ -146,7 +160,7 @@ const AppContent: React.FC = () => {
                 index
                 element={
                   <LazyComponent>
-                    <ComprehensiveDashboard />
+                    <EnhancedDashboard />
                   </LazyComponent>
                 }
               />
@@ -191,6 +205,22 @@ const AppContent: React.FC = () => {
                 }
               />
               <Route
+                path="paywall-demo"
+                element={
+                  <LazyComponent>
+                    <PaywallDemo />
+                  </LazyComponent>
+                }
+              />
+              <Route
+                path="mock-paywalls"
+                element={
+                  <LazyComponent>
+                    <MockPaywallCreator />
+                  </LazyComponent>
+                }
+              />
+              <Route
                 path="customers"
                 element={
                   <LazyComponent>
@@ -202,7 +232,7 @@ const AppContent: React.FC = () => {
                 path="analytics"
                 element={
                   <LazyComponent>
-                    <Analytics />
+                    <AnalyticsPage />
                   </LazyComponent>
                 }
               />
@@ -270,6 +300,14 @@ const AppContent: React.FC = () => {
                   </LazyComponent>
                 }
               />
+              <Route
+                path="help"
+                element={
+                  <LazyComponent>
+                    <Help />
+                  </LazyComponent>
+                }
+              />
             </Route>
 
             {/* Public customer view route */}
@@ -285,9 +323,12 @@ const AppContent: React.FC = () => {
 };
 
 const App: React.FC = () => {
-  // Register service worker for offline support
+  // Initialize development logger to silence unwanted logs
+  useDevLogger();
+
+  // Register service worker for offline support (production only)
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
+    if (import.meta.env.PROD && 'serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')
           .then((registration) => {

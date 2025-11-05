@@ -6,6 +6,8 @@ import SocialShare from './SocialShare';
 import EmailCampaignManager from './EmailCampaignManager';
 import LandingPageManager from './LandingPageManager';
 import ABTestManager from './ABTestManager';
+import UTMLinkBuilder from './UTMLinkBuilder';
+import PromotionalCampaigns from './PromotionalCampaigns';
 
 const MarketingHub: React.FC = () => {
   const [activeTab, setActiveTab] = useState('discounts');
@@ -78,6 +80,26 @@ const MarketingHub: React.FC = () => {
                   }`}
                 >
                   A/B Testing
+                </button>
+                <button
+                  onClick={() => setActiveTab('utm')}
+                  className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'utm'
+                      ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400 dark:border-indigo-400'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-500'
+                  }`}
+                >
+                  UTM Links
+                </button>
+                <button
+                  onClick={() => setActiveTab('promotions')}
+                  className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'promotions'
+                      ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400 dark:border-indigo-400'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-500'
+                  }`}
+                >
+                  Promotions
                 </button>
               </nav>
             </div>
@@ -162,6 +184,8 @@ const MarketingHub: React.FC = () => {
             {activeTab === 'email' && <EmailCampaignManager />}
             {activeTab === 'landing' && <LandingPageManager />}
             {activeTab === 'abtest' && <ABTestManager />}
+            {activeTab === 'utm' && <UTMLinkBuilder />}
+            {activeTab === 'promotions' && <PromotionalCampaigns />}
           </div>
         </div>
       </main>

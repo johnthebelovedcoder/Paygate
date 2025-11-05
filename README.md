@@ -62,13 +62,18 @@ Before you begin, ensure you have met the following requirements:
 
 ## Environment Variables
 
-Create a `.env` file in the root directory with the following variables:
+### Frontend
 
-```env
-# Frontend Environment Variables
-REACT_APP_API_URL=http://localhost:3001/api
-REACT_APP_PAYSTACK_PUBLIC_KEY=pk_test_your_paystack_public_key_here
-GENERATE_SOURCEMAP=false
+Create a `.env` file in the `paygate-ui` directory based on `.env.example`:
+
+```bash
+# API Configuration
+VITE_API_URL=http://localhost:8000/api
+VITE_API_TIMEOUT=30000
+VITE_TOKEN_REFRESH_THRESHOLD=300000  # 5 minutes in milliseconds
+
+# Public Endpoints (comma-separated)
+# VITE_PUBLIC_ENDPOINTS=/public/endpoint1,/public/endpoint2
 ```
 
 ## Running the Application

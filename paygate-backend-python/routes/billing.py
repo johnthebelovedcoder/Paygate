@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from config.database import get_db
-from models import SubscriptionPlan, Subscription, Invoice, BillingInfo, User
+from models import SubscriptionPlan, Subscription, Invoice, BillingInfo, User, PaymentMethod
 from schemas import *
 from services import billing_service, user_service
 from utils.auth import get_current_user
@@ -152,3 +152,81 @@ async def update_billing_info(
         )
     updated_info = await billing_service.create_or_update_billing_info(db, billing_info)
     return updated_info
+
+
+# Payment Methods
+@router.get("/payment-methods", response_model=List[PaymentMethod])
+async def get_payment_methods(
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    payment_methods = await billing_service.get_payment_methods_by_user(db, current_user.id)
+    return payment_methods
+
+
+@router.post("/payment-methods", response_model=PaymentMethod)
+async def create_payment_method(
+    payment_method: PaymentMethodCreate,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    # Ensure user can only create payment methods for themselves
+    if payment_method.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot create payment method for another user"
+        )
+    created_payment_method = await billing_service.create_payment_method(db, payment_method)
+    return created_payment_method
+
+
+@router.get("/payment-methods/{payment_method_id}", response_model=PaymentMethod)
+async def get_payment_method(
+    payment_method_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    payment_method = await billing_service.get_payment_method_by_id(db, payment_method_id)
+    if not payment_method or payment_method.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Payment method not found"
+        )
+    return payment_method
+
+
+@router.put("/payment-methods/{payment_method_id}", response_model=PaymentMethod)
+async def update_payment_method(
+    payment_method_id: int,
+    payment_method_update: PaymentMethodUpdate,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    payment_method = await billing_service.get_payment_method_by_id(db, payment_method_id)
+    if not payment_method or payment_method.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Payment method not found"
+        )
+    
+    updated_payment_method = await billing_service.update_payment_method(
+        db, payment_method_id, payment_method_update
+    )
+    return updated_payment_method
+
+
+@router.delete("/payment-methods/{payment_method_id}")
+async def delete_payment_method(
+    payment_method_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    payment_method = await billing_service.get_payment_method_by_id(db, payment_method_id)
+    if not payment_method or payment_method.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Payment method not found"
+        )
+    
+    await billing_service.delete_payment_method(db, payment_method_id)
+    return {"message": "Payment method deleted successfully"}

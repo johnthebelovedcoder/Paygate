@@ -11,17 +11,22 @@ import json
 
 router = APIRouter()
 
-@router.get("/paywalls")
+@router.get("/paywalls", response_model=PaywallListResponse)
 async def get_paywalls(
     pagination: PaginationParams = Depends(),
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     paywalls, total = await paywall_service.get_paywalls_by_owner(db, current_user.id, pagination)
-    return create_paginated_response(paywalls, total, pagination.page, pagination.limit)
+    return PaywallListResponse(
+        success=True,
+        message="Paywalls retrieved successfully",
+        data=paywalls,
+        count=total
+    )
 
 
-@router.get("/paywalls/{paywall_id}", response_model=Paywall)
+@router.get("/paywalls/{paywall_id}", response_model=PaywallResponse)
 async def get_paywall(
     paywall_id: int,
     current_user: dict = Depends(get_current_user),
@@ -33,18 +38,35 @@ async def get_paywall(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Paywall not found"
         )
-    return paywall
+    return PaywallResponse(
+        success=True,
+        message="Paywall retrieved successfully",
+        data=paywall
+    )
 
 
 @router.post("/paywalls", response_model=Paywall)
 async def create_paywall(
-    paywall: PaywallCreate,
+    paywall: PaywallCreateRequest,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    # Set the owner ID to the current user
-    paywall_with_owner = paywall.copy(update={"owner_id": current_user.id})
-    created_paywall = await paywall_service.create_paywall(db, paywall_with_owner)
+    # Create the complete paywall data dict with owner_id from current user
+    paywall_data = {
+        "title": paywall.title,
+        "description": paywall.description,
+        "content_ids": paywall.content_ids,
+        "price": paywall.price,
+        "currency": paywall.currency,
+        "duration": paywall.duration,
+        "status": paywall.status,
+        "success_redirect_url": paywall.success_redirect_url,
+        "cancel_redirect_url": paywall.cancel_redirect_url,
+        "webhook_url": paywall.webhook_url,
+        "owner_id": current_user.id  # Set owner_id from authenticated user
+    }
+    print(f"Creating paywall with data: {paywall_data}")  # Debug print
+    created_paywall = await paywall_service.create_paywall(db, paywall_data)
     return created_paywall
 
 

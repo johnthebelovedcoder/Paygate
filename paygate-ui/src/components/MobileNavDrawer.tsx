@@ -9,10 +9,15 @@ interface NavItem {
   current?: boolean;
 }
 
+interface NavGroup {
+  name: string;
+  items: NavItem[];
+}
+
 interface MobileNavDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  navItems: NavItem[];
+  navItems: (NavItem | NavGroup)[];
 }
 
 const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({ 
@@ -93,29 +98,68 @@ const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
           {/* Navigation */}
           <nav className="flex-1 px-2 py-6 space-y-1 overflow-y-auto">
             {navItems.map((item) => {
-              const isCurrent = item.current !== undefined 
-                ? item.current 
-                : location.pathname === item.href;
-              
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={`flex items-center px-4 py-3 text-base font-medium rounded-md ${
-                    isCurrent
-                      ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300'
-                      : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
-                  }`}
-                  onClick={onClose}
-                >
-                  {item.icon && (
-                    <span className="mr-3 flex-shrink-0 h-6 w-6">
-                      {item.icon}
-                    </span>
-                  )}
-                  <span className="truncate">{t(item.name as any) || item.name}</span>
-                </Link>
-              );
+              if ('items' in item) {
+                // This is a navigation group
+                return (
+                  <div key={item.name} className="mb-6">
+                    <h3 className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider dark:text-gray-400">
+                      {t(item.name as any) || item.name}
+                    </h3>
+                    <div className="mt-2 space-y-1">
+                      {item.items.map((subItem) => {
+                        const isCurrent = subItem.current !== undefined 
+                          ? subItem.current 
+                          : location.pathname === subItem.href;
+                        
+                        return (
+                          <Link
+                            key={subItem.name}
+                            to={subItem.href}
+                            className={`flex items-center px-4 py-3 text-base font-medium rounded-md ${
+                              isCurrent
+                                ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300'
+                                : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+                            }`}
+                            onClick={onClose}
+                          >
+                            {subItem.icon && (
+                              <span className="mr-3 flex-shrink-0 h-6 w-6">
+                                {subItem.icon}
+                              </span>
+                            )}
+                            <span className="truncate">{t(subItem.name as any) || subItem.name}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              } else {
+                // This is a single navigation item
+                const isCurrent = item.current !== undefined 
+                  ? item.current 
+                  : location.pathname === item.href;
+                
+                return (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    className={`flex items-center px-4 py-3 text-base font-medium rounded-md ${
+                      isCurrent
+                        ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300'
+                        : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+                    }`}
+                    onClick={onClose}
+                  >
+                    {item.icon && (
+                      <span className="mr-3 flex-shrink-0 h-6 w-6">
+                        {item.icon}
+                      </span>
+                    )}
+                    <span className="truncate">{t(item.name as any) || item.name}</span>
+                  </Link>
+                );
+              }
             })}
           </nav>
           

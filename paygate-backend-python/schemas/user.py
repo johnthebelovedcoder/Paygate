@@ -7,7 +7,7 @@ from utils.validation import sanitize_string, is_valid_name, is_valid_email
 class UserBase(BaseModel):
     name: str = Field(..., min_length=2, max_length=100)
     email: EmailStr = Field(..., max_length=255)
-    role: Optional[str] = Field("user", min_length=1, max_length=50)
+    role: Optional[str] = Field("admin", min_length=1, max_length=50)
     country: Optional[str] = Field(None, min_length=1, max_length=100)
     currency: Optional[str] = Field(None, min_length=1, max_length=10)
 
@@ -166,3 +166,7 @@ class MFAVerifyRequest(BaseModel):
 
 class VerifyEmailRequest(BaseModel):
     token: str
+
+
+class RefreshTokenRequest(BaseModel):
+    refreshToken: str

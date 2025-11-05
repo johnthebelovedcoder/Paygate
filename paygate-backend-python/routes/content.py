@@ -7,12 +7,12 @@ from services import content_service
 from utils.auth import get_current_user
 from utils.pagination import PaginationParams, create_paginated_response
 from utils.response_optimization import minimal_content_response
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 import os
 
 router = APIRouter()
 
-@router.get("/content")
+@router.get("/content", response_model=Dict[str, List[Content]])
 async def get_content(
     pagination: PaginationParams = Depends(),
     fields: str = Query(None, description="Comma-separated list of fields to return"),
@@ -20,16 +20,7 @@ async def get_content(
     db: AsyncSession = Depends(get_db)
 ):
     content_items, total = await content_service.get_content_by_owner(db, current_user.id, pagination)
-    paginated_response = create_paginated_response(content_items, total, pagination.page, pagination.limit)
-    
-    # Apply field selection if requested
-    if fields:
-        selected_fields = [f.strip() for f in fields.split(',')]
-        # This would require additional logic to limit the response fields
-        # For now, we'll return the full response but in a real implementation
-        # we'd apply field selection here
-    
-    return paginated_response
+    return {"data": content_items}
 
 
 @router.get("/content/{content_id}", response_model=Content)
@@ -49,13 +40,23 @@ async def get_content_by_id(
 
 @router.post("/content", response_model=Content)
 async def create_content(
-    content: ContentCreate,
+    content: ContentCreateRequest,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    # Set the owner ID to the current user
-    content_with_owner = content.copy(update={"owner_id": current_user.id})
-    created_content = await content_service.create_content(db, content_with_owner)
+    # Create the complete content data dict with owner_id from current user
+    content_data = {
+        "title": content.title,
+        "description": content.description,
+        "type": content.type,
+        "url": content.url,
+        "is_protected": content.is_protected,
+        "price": content.price,
+        "currency": content.currency,
+        "owner_id": current_user.id  # Set owner_id from authenticated user
+    }
+    print(f"Creating content with data: {content_data}")  # Debug print
+    created_content = await content_service.create_content(db, content_data)
     return created_content
 
 
@@ -166,13 +167,22 @@ async def content_upload(
 # Content creation after file upload (for UploadInterface component)
 @router.post("/content", response_model=Content)
 async def create_content_after_upload(
-    content: ContentCreate,
+    content: ContentCreateRequest,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    # Set the owner ID to the current user
-    content_with_owner = content.copy(update={"owner_id": current_user.id})
-    created_content = await content_service.create_content(db, content_with_owner)
+    # Create the complete content data dict with owner_id from current user
+    content_data = {
+        "title": content.title,
+        "description": content.description,
+        "type": content.type,
+        "url": content.url,
+        "is_protected": content.is_protected,
+        "price": content.price,
+        "currency": content.currency,
+        "owner_id": current_user.id  # Set owner_id from authenticated user
+    }
+    created_content = await content_service.create_content(db, content_data)
     return created_content
 
 

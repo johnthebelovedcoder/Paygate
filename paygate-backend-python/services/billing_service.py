@@ -4,7 +4,7 @@ from sqlalchemy.orm import selectinload
 from typing import List, Optional
 from datetime import datetime
 import json
-from models import SubscriptionPlan, Subscription, Invoice, Coupon, BillingInfo
+from models import SubscriptionPlan, Subscription, Invoice, Coupon, BillingInfo, PaymentMethod
 from schemas.billing import (
     SubscriptionPlanCreate, SubscriptionPlanUpdate, 
     SubscriptionCreate, SubscriptionUpdate,
@@ -12,6 +12,7 @@ from schemas.billing import (
     CouponCreate, CouponUpdate,
     BillingInfoCreate, BillingInfoUpdate
 )
+from schemas.payment import PaymentMethodCreate, PaymentMethodUpdate
 from utils.cache import cache
 
 
@@ -148,3 +149,66 @@ async def create_or_update_billing_info(db: AsyncSession, billing_info: BillingI
         await db.commit()
         await db.refresh(db_billing_info)
         return db_billing_info
+
+
+# Payment Method Services
+async def get_payment_method_by_id(db: AsyncSession, payment_method_id: int) -> Optional[PaymentMethod]:
+    result = await db.execute(select(PaymentMethod).filter(PaymentMethod.id == payment_method_id))
+    return result.scalar_one_or_none()
+
+
+async def get_payment_methods_by_user(db: AsyncSession, user_id: int) -> List[PaymentMethod]:
+    result = await db.execute(
+        select(PaymentMethod)
+        .filter(PaymentMethod.user_id == user_id, PaymentMethod.is_active == True)
+        .order_by(PaymentMethod.is_default.desc(), PaymentMethod.created_at.desc())
+    )
+    return result.scalars().all()
+
+
+async def create_payment_method(db: AsyncSession, payment_method: PaymentMethodCreate) -> PaymentMethod:
+    db_payment_method = PaymentMethod(**payment_method.model_dump())
+    db.add(db_payment_method)
+    
+    # If this is the first payment method for the user, set it as default
+    existing_methods = await get_payment_methods_by_user(db, payment_method.user_id)
+    if not existing_methods:
+        db_payment_method.is_default = True
+    
+    await db.commit()
+    await db.refresh(db_payment_method)
+    return db_payment_method
+
+
+async def update_payment_method(
+    db: AsyncSession, 
+    payment_method_id: int, 
+    payment_method_update: PaymentMethodUpdate
+) -> PaymentMethod:
+    payment_method = await get_payment_method_by_id(db, payment_method_id)
+    if payment_method:
+        for field, value in payment_method_update.model_dump(exclude_unset=True).items():
+            setattr(payment_method, field, value)
+        
+        # If making this method default, ensure other methods are not default
+        if getattr(payment_method_update, 'is_default', None) is True:
+            # Reset all other payment methods for this user to not be default
+            other_methods = await get_payment_methods_by_user(db, payment_method.user_id)
+            for other_method in other_methods:
+                if other_method.id != payment_method_id and other_method.is_default:
+                    other_method.is_default = False
+                    await db.commit()
+        
+        await db.commit()
+        await db.refresh(payment_method)
+    
+    return payment_method
+
+
+async def delete_payment_method(db: AsyncSession, payment_method_id: int) -> bool:
+    payment_method = await get_payment_method_by_id(db, payment_method_id)
+    if payment_method:
+        db.delete(payment_method)
+        await db.commit()
+        return True
+    return False

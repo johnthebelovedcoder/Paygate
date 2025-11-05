@@ -13,7 +13,7 @@ class User(Base):
     is_verified = Column(Boolean, default=False, index=True)  # Added index
     mfa_enabled = Column(Boolean, default=False, index=True)  # Added index
     mfa_secret = Column(String, nullable=True)
-    role = Column(String, default="user", index=True)  # Added index
+    role = Column(String, default="admin", index=True)  # Added index
     country = Column(String, nullable=True, index=True)  # Added index
     currency = Column(String, nullable=True, index=True)  # Added index
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)  # Added index

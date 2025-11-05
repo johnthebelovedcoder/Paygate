@@ -24,6 +24,9 @@ const ContentAnalytics: React.FC = () => {
   const [sortBy, setSortBy] = useState<'downloads' | 'revenue' | 'engagement'>('downloads');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Use popularContent as contentItems
+  const contentItems = analyticsData.popularContent;
 
   // Fetch analytics data from the backend
   useEffect(() => {
@@ -247,7 +250,7 @@ const ContentAnalytics: React.FC = () => {
                   Active Content
                 </h4>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {contentItems.filter(c => c && c.status === 'published').length}
+                  {analyticsData.popularContent.filter(c => c && c.status === 'published').length}
                 </p>
               </div>
             </div>

@@ -59,7 +59,7 @@ class AvatarService {
     try {
       // Update user preferences with new avatar URL
       const response = await apiService.put<{ success: boolean; message?: string }>(
-        `/user/preferences`,
+        `/users/me/preferences`,
         { avatarUrl }
       );
       return {

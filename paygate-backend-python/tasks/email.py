@@ -2,7 +2,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from celery import current_task
-from .celery_worker import celery_app
+from celery_worker import celery_app
 from config.settings import settings
 import logging
 
@@ -53,7 +53,7 @@ def send_welcome_email(self, user_email, user_name):
     The Paygate Team
     """
     
-    return send_email_task(user_email, subject, body)
+    return send_email_task.delay(user_email, subject, body)
 
 @celery_app.task(bind=True)
 def send_payment_confirmation_email(self, user_email, payment_details):
@@ -76,7 +76,7 @@ def send_payment_confirmation_email(self, user_email, payment_details):
     The Paygate Team
     """
     
-    return send_email_task(user_email, subject, body)
+    return send_email_task.delay(user_email, subject, body)
 
 @celery_app.task(bind=True)
 def send_password_reset_email(self, user_email, reset_token):
@@ -98,4 +98,4 @@ def send_password_reset_email(self, user_email, reset_token):
     The Paygate Team
     """
     
-    return send_email_task(user_email, subject, body)
+    return send_email_task.delay(user_email, subject, body)

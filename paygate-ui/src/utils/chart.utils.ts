@@ -8,26 +8,34 @@ import type { ChartData, RevenueData, DailyRevenueData, TrafficSourceData } from
  * @returns Array of chart data objects with name and value properties
  */
 export const toChartData = (data: RevenueData[] | DailyRevenueData[]) => {
-  if (!data || data.length === 0) {
+  // Check if data is an array and not null/undefined
+  if (!data || !Array.isArray(data) || data.length === 0) {
     return [];
   }
 
   // Determine if data is RevenueData[] or DailyRevenueData[]
   // Assuming RevenueData has 'month' and DailyRevenueData has 'date'
+  if (!data[0]) {
+    // If first element is undefined, default to monthly view
+    return data.map((item: any) => ({
+      name: item?.month || item?.date || 'Unknown',
+      value: item?.revenue || 0,
+    }));
+  }
   const isDailyData = (data[0] as DailyRevenueData).date !== undefined;
 
   return data.map((item: any) => {
     if (isDailyData) {
       const dailyItem = item as DailyRevenueData;
       return {
-        name: dailyItem.date,
-        value: dailyItem.revenue,
+        name: dailyItem?.date || 'Unknown',
+        value: dailyItem?.revenue || 0,
       };
     } else {
       const revenueItem = item as RevenueData;
       return {
-        name: revenueItem.month,
-        value: revenueItem.revenue,
+        name: revenueItem?.month || 'Unknown',
+        value: revenueItem?.revenue || 0,
       };
     }
   });

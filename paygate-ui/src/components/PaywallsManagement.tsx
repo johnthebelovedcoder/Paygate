@@ -6,6 +6,8 @@ import paywallService from '../services/paywallService';
 import { useAppData } from '../contexts/AppDataContext';
 import { CURRENCY_SYMBOLS } from '../utils/constants.utils';
 import AnalyticsChart from './AnalyticsChart';
+import AccessSettings from './AccessSettings';
+import EmbedCodeGenerator from './EmbedCodeGenerator';
 import type { AxiosError } from 'axios';
 
 function isAxiosError(error: unknown): error is AxiosError {
@@ -23,6 +25,7 @@ interface EmbedCodeData {
   id: string;
   title: string;
   url: string;
+  embedCode: string;
 }
 
 const PaywallsManagement: React.FC = () => {
@@ -30,9 +33,11 @@ const PaywallsManagement: React.FC = () => {
   const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState<'createdAt' | 'title' | 'sales' | 'revenue'>('createdAt');
+  const [sortBy, setSortBy] = useState<'createdAt' | 'revenue' | 'views'>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedPaywall, setSelectedPaywall] = useState<Paywall | null>(null);
+  const [showAccessSettings, setShowAccessSettings] = useState(false);
+  const [showEmbedCodes, setShowEmbedCodes] = useState(false);
   const [performanceData, setPerformanceData] = useState<Record<string, PaywallPerformanceData>>(
     {}
   );
@@ -44,6 +49,8 @@ const PaywallsManagement: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'active' | 'draft' | 'archived'>('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedPaywalls, setSelectedPaywalls] = useState<Set<string>>(new Set());
+  const [showBulkActions, setShowBulkActions] = useState(false);
   const itemsPerPage = 10; // Number of items to show per page
 
   // Fetch paywalls data
@@ -79,6 +86,7 @@ const PaywallsManagement: React.FC = () => {
             id: paywall.id,
             title: paywall.title || 'Untitled Paywall',
             url: `${window.location.origin}/p/${paywall.id}`,
+            embedCode: `<iframe src="${window.location.origin}/p/${paywall.id}" width="100%" height="500" frameborder="0"></iframe>`,
           };
         });
 
@@ -125,14 +133,11 @@ const PaywallsManagement: React.FC = () => {
 
       let comparison = 0;
       switch (sortBy) {
-        case 'title':
-          comparison = (a.title || '').localeCompare(b.title || '');
-          break;
-        case 'sales':
-          comparison = (a.sales || 0) - (b.sales || 0);
-          break;
         case 'revenue':
           comparison = (a.revenue || 0) - (b.revenue || 0);
+          break;
+        case 'views':
+          comparison = (performanceData[a.id]?.views || 0) - (performanceData[b.id]?.views || 0);
           break;
         case 'createdAt':
         default:
@@ -143,7 +148,7 @@ const PaywallsManagement: React.FC = () => {
       return sortOrder === 'asc' ? comparison : -comparison;
     });
 
-  const handleSort = (field: 'createdAt' | 'title' | 'sales' | 'revenue') => {
+  const handleSort = (field: 'createdAt' | 'revenue' | 'views') => {
     if (sortBy === field) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
@@ -152,7 +157,7 @@ const PaywallsManagement: React.FC = () => {
     }
   };
 
-  const getSortIcon = (field: 'createdAt' | 'title' | 'sales' | 'revenue') => {
+  const getSortIcon = (field: 'createdAt' | 'revenue' | 'views') => {
     if (sortBy !== field) return null;
     return sortOrder === 'asc' ? '↑' : '↓';
   };
@@ -168,6 +173,91 @@ const PaywallsManagement: React.FC = () => {
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
     }
+  };
+
+  // Bulk selection handlers
+  const toggleSelectPaywall = (paywallId: string) => {
+    setSelectedPaywalls(prev => {
+      const newSelected = new Set(prev);
+      if (newSelected.has(paywallId)) {
+        newSelected.delete(paywallId);
+      } else {
+        newSelected.add(paywallId);
+      }
+      return newSelected;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedPaywalls.size === filteredAndSortedPaywalls.length) {
+      setSelectedPaywalls(new Set());
+    } else {
+      setSelectedPaywalls(new Set(filteredAndSortedPaywalls.map(p => p.id)));
+    }
+  };
+
+  const handleBulkArchive = async () => {
+    if (selectedPaywalls.size === 0) return;
+    
+    const paywallsToArchive = filteredAndSortedPaywalls.filter(p => selectedPaywalls.has(p.id));
+    for (const paywall of paywallsToArchive) {
+      try {
+        await paywallService.updatePaywall(paywall.id, {
+          ...paywall,
+          status: 'archived',
+        });
+      } catch (err: unknown) {
+        console.error('Error archiving paywall:', err);
+      }
+    }
+    
+    if (paywalls?.refreshPaywalls) {
+      paywalls.refreshPaywalls();
+    }
+    setSelectedPaywalls(new Set());
+  };
+
+  const handleBulkActivate = async () => {
+    if (selectedPaywalls.size === 0) return;
+    
+    const paywallsToActivate = filteredAndSortedPaywalls.filter(p => selectedPaywalls.has(p.id));
+    for (const paywall of paywallsToActivate) {
+      try {
+        await paywallService.updatePaywall(paywall.id, {
+          ...paywall,
+          status: 'published',
+        });
+      } catch (err: unknown) {
+        console.error('Error activating paywall:', err);
+      }
+    }
+    
+    if (paywalls?.refreshPaywalls) {
+      paywalls.refreshPaywalls();
+    }
+    setSelectedPaywalls(new Set());
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedPaywalls.size === 0) return;
+    
+    const paywallsToDelete = filteredAndSortedPaywalls.filter(p => selectedPaywalls.has(p.id));
+    if (!window.confirm(`Are you sure you want to delete ${paywallsToDelete.length} paywall(s)?`)) {
+      return;
+    }
+    
+    for (const paywall of paywallsToDelete) {
+      try {
+        await paywallService.deletePaywall(paywall.id);
+      } catch (err: unknown) {
+        console.error('Error deleting paywall:', err);
+      }
+    }
+    
+    if (paywalls?.refreshPaywalls) {
+      paywalls.refreshPaywalls();
+    }
+    setSelectedPaywalls(new Set());
   };
 
   const handleDuplicatePaywall = async (paywall: Paywall) => {
@@ -228,8 +318,38 @@ const PaywallsManagement: React.FC = () => {
     }
   };
 
+  const handleDeletePaywall = async (paywall: Paywall) => {
+    if (!window.confirm('Are you sure you want to delete this paywall?')) {
+      return;
+    }
+    
+    try {
+      if (!paywall || !paywall.id) {
+        throw new Error('Cannot delete undefined paywall');
+      }
+
+      await paywallService.deletePaywall(paywall.id);
+      if (paywalls?.refreshPaywalls) {
+        paywalls.refreshPaywalls();
+      }
+    } catch (err: unknown) {
+      console.error('Error deleting paywall:', err);
+      if (isAxiosError(err)) {
+        setError(err.message || 'Failed to delete paywall');
+      } else {
+        setError('Failed to delete paywall');
+      }
+    }
+  };
+
+  const handleSharePaywall = (paywall: Paywall) => {
+    const url = `${window.location.origin}/p/${paywall.id}`;
+    navigator.clipboard.writeText(url);
+    alert('Paywall link copied to clipboard!');
+  };
+
   const handleCopyEmbedCode = (paywallId: string) => {
-    const embedCode = `<iframe src="${embedCodes[paywallId]?.url}" width="100%" height="500" frameborder="0"></iframe>`;
+    const embedCode = embedCodes[paywallId]?.embedCode || `<iframe src="${embedCodes[paywallId]?.url}" width="100%" height="500" frameborder="0"></iframe>`;
     navigator.clipboard.writeText(embedCode);
     alert('Embed code copied to clipboard!');
   };
@@ -310,11 +430,13 @@ const PaywallsManagement: React.FC = () => {
   }
 
   const headerActions = (
-    <Link to="/create-paywall">
-      <button className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-600">
-        Create New Paywall
-      </button>
-    </Link>
+    <div className="flex space-x-3">
+      <Link to="/create-paywall">
+        <button className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-600">
+          Create New Paywall
+        </button>
+      </Link>
+    </div>
   );
 
   return (
@@ -375,6 +497,45 @@ const PaywallsManagement: React.FC = () => {
               </div>
             </div>
 
+            {/* Bulk Actions Bar */}
+            {selectedPaywalls.size > 0 && (
+              <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-100 dark:bg-blue-900/20 dark:border-blue-900/50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                      {selectedPaywalls.size} paywall{selectedPaywalls.size > 1 ? 's' : ''} selected
+                    </span>
+                  </div>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={handleBulkActivate}
+                      className="inline-flex items-center px-3 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:text-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50"
+                    >
+                      Activate
+                    </button>
+                    <button
+                      onClick={handleBulkArchive}
+                      className="inline-flex items-center px-3 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-yellow-700 bg-yellow-100 hover:bg-yellow-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 dark:text-yellow-200 dark:bg-yellow-900/30 dark:hover:bg-yellow-900/50"
+                    >
+                      Archive
+                    </button>
+                    <button
+                      onClick={handleBulkDelete}
+                      className="inline-flex items-center px-3 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:text-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50"
+                    >
+                      Delete
+                    </button>
+                    <button
+                      onClick={() => setSelectedPaywalls(new Set())}
+                      className="inline-flex items-center px-3 py-1 border border-gray-300 text-xs leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Controls */}
             <div className="mb-6">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between">
@@ -411,70 +572,90 @@ const PaywallsManagement: React.FC = () => {
                       placeholder="Search paywalls..."
                     />
                   </div>
-                  <button
-                    onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
-                    className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600"
-                  >
-                    {viewMode === 'grid' ? (
-                      <>
-                        <svg
-                          className="h-5 w-5 mr-1"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M4 6h16M4 10h16M4 14h16M4 18h16"
-                          />
-                        </svg>
-                        List
-                      </>
-                    ) : (
-                      <>
-                        <svg
-                          className="h-5 w-5 mr-1"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
-                          />
-                        </svg>
-                        Grid
-                      </>
-                    )}
-                  </button>
+                  <div className="flex space-x-1">
+                    <button
+                      onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
+                      className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600"
+                    >
+                      {viewMode === 'grid' ? (
+                        <>
+                          <svg
+                            className="h-5 w-5 mr-1"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M4 6h16M4 10h16M4 14h16M4 18h16"
+                            />
+                          </svg>
+                          List
+                        </>
+                      ) : (
+                        <>
+                          <svg
+                            className="h-5 w-5 mr-1"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
+                            />
+                          </svg>
+                          Grid
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <select
+                      value={sortBy}
+                      onChange={(e) => {
+                        setSortBy(e.target.value as 'createdAt' | 'revenue' | 'views');
+                        setSortOrder('desc');
+                      }}
+                      className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    >
+                      <option value="createdAt">Sort by Date</option>
+                      <option value="revenue">Sort by Revenue</option>
+                      <option value="views">Sort by Views</option>
+                    </select>
+                  </div>
                 </div>
               </div>
             </div>
 
             {filteredAndSortedPaywalls.length === 0 ? (
               <div className="bg-white shadow rounded-lg p-8 text-center dark:bg-gray-800 dark:shadow-gray-900/50">
-                <svg
-                  className="mx-auto h-12 w-12 text-gray-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  />
-                </svg>
-                <h3 className="mt-2 text-lg font-medium text-gray-900 dark:text-white">
-                  No paywalls found
+                {/* Empty State with Illustration */}
+                <div className="mx-auto flex justify-center">
+                  <svg 
+                    className="w-24 h-24 text-gray-400" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24" 
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      strokeWidth="1.5" 
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    ></path>
+                  </svg>
+                </div>
+                <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">
+                  Create your first paywall
                 </h3>
                 <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                  Get started by creating a new paywall.
+                  Get started by creating your first paywall to monetize your content.
                 </p>
                 <div className="mt-6">
                   <Link
@@ -497,6 +678,18 @@ const PaywallsManagement: React.FC = () => {
                     Create Paywall
                   </Link>
                 </div>
+                <div className="mt-4">
+                  <a 
+                    href="#" 
+                    className="text-sm text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      alert('Getting started guide would open here');
+                    }}
+                  >
+                    Need help getting started?
+                  </a>
+                </div>
               </div>
             ) : viewMode === 'grid' ? (
               // Grid View
@@ -506,7 +699,44 @@ const PaywallsManagement: React.FC = () => {
                     key={paywall.id}
                     className="border border-gray-200 rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-200 dark:border-gray-700 dark:bg-gray-700/50"
                   >
-                    <div className="p-5">
+                    {/* Checkbox for bulk selection */}
+                    <div className="absolute top-3 left-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedPaywalls.has(paywall.id)}
+                        onChange={() => toggleSelectPaywall(paywall.id)}
+                        className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600"
+                      />
+                    </div>
+                    
+                    <div className="p-5 pt-6">
+                      {/* Thumbnail/preview image */}
+                      <div className="mb-4">
+                        {paywall.thumbnailUrl ? (
+                          <img 
+                            src={paywall.thumbnailUrl} 
+                            alt={paywall.title || 'Paywall thumbnail'} 
+                            className="w-full h-40 object-cover rounded-md"
+                          />
+                        ) : (
+                          <div className="bg-gray-200 border-2 border-dashed rounded-xl w-full h-40 flex items-center justify-center dark:bg-gray-700">
+                            <svg 
+                              className="h-10 w-10 text-gray-400" 
+                              fill="none" 
+                              viewBox="0 0 24 24" 
+                              stroke="currentColor"
+                            >
+                              <path 
+                                strokeLinecap="round" 
+                                strokeLinejoin="round" 
+                                strokeWidth="2" 
+                                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                              />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+                      
                       <div className="flex justify-between items-start">
                         <Link
                           to={`/paywall/${paywall.id}`}
@@ -526,74 +756,92 @@ const PaywallsManagement: React.FC = () => {
                           {paywall.description || 'No description provided'}
                         </p>
                       </div>
-                      <div className="mt-4 flex items-center justify-between">
+                      
+                      {/* Price */}
+                      <div className="mt-3 flex items-center justify-between">
                         <div>
-                          <p className="text-lg font-bold text-gray-900 dark:text-white">
+                          <p className="text-xl font-bold text-gray-900 dark:text-white">
                             {CURRENCY_SYMBOLS[paywall.currency || '']}
                             {typeof paywall.price === 'number' ? paywall.price.toFixed(2) : '0.00'}
                           </p>
                         </div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
-                          <span className="font-medium">{paywall.sales || 0}</span> sales
-                        </div>
                       </div>
-                      <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                        <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
-                          <span>Revenue</span>
-                          <span className="font-medium">
-                            {CURRENCY_SYMBOLS[paywall.currency || '']}
-                            {typeof paywall.revenue === 'number'
-                              ? paywall.revenue.toFixed(2)
-                              : '0.00'}
-                          </span>
-                        </div>
-                        <div className="mt-1 flex justify-between text-sm text-gray-500 dark:text-gray-400">
-                          <span>Created</span>
-                          <span>{new Date(paywall.createdAt || '').toLocaleDateString()}</span>
-                        </div>
-                      </div>
-
-                      {/* Performance Summary */}
+                      
+                      {/* Stats: Views, Purchases, Revenue */}
                       {performanceData[paywall.id] && (
-                        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                          <div className="grid grid-cols-3 gap-2 text-center">
-                            <div>
-                              <p className="text-xs text-gray-500 dark:text-gray-400">Views</p>
-                              <p className="font-medium text-gray-900 dark:text-white">
-                                {performanceData[paywall.id]?.views || 0}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-gray-500 dark:text-gray-400">
-                                Conversions
-                              </p>
-                              <p className="font-medium text-gray-900 dark:text-white">
-                                {performanceData[paywall.id]?.conversions || 0}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-gray-500 dark:text-gray-400">Rate</p>
-                              <p className="font-medium text-gray-900 dark:text-white">
-                                {performanceData[paywall.id]?.conversionRate || 0}%
-                              </p>
-                            </div>
+                        <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+                          <div className="px-2 py-1 bg-gray-50 rounded dark:bg-gray-600/50">
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Views</p>
+                            <p className="font-medium text-gray-900 dark:text-white">
+                              {performanceData[paywall.id]?.views || 0}
+                            </p>
+                          </div>
+                          <div className="px-2 py-1 bg-gray-50 rounded dark:bg-gray-600/50">
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Purchases</p>
+                            <p className="font-medium text-gray-900 dark:text-white">
+                              {paywall.sales || 0}
+                            </p>
+                          </div>
+                          <div className="px-2 py-1 bg-gray-50 rounded dark:bg-gray-600/50">
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Revenue</p>
+                            <p className="font-medium text-gray-900 dark:text-white">
+                              {CURRENCY_SYMBOLS[paywall.currency || '']}
+                              {typeof paywall.revenue === 'number'
+                                ? paywall.revenue.toFixed(2)
+                                : '0.00'}
+                            </p>
                           </div>
                         </div>
                       )}
-
-                      <div className="mt-4 flex space-x-2">
-                        <Link
-                          to={`/paywall/${paywall.id}`}
-                          className="flex-1 inline-flex justify-center items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:text-indigo-300 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50"
+                      
+                      {/* Quick Actions */}
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <button
+                          onClick={() => handleSharePaywall(paywall)}
+                          className="inline-flex items-center px-2 py-1 border border-gray-300 shadow-sm text-xs leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600"
+                          title="Share"
                         >
-                          View
+                          <svg 
+                            className="h-4 w-4 mr-1" 
+                            fill="none" 
+                            viewBox="0 0 24 24" 
+                            stroke="currentColor"
+                          >
+                            <path 
+                              strokeLinecap="round" 
+                              strokeLinejoin="round" 
+                              strokeWidth="2" 
+                              d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
+                            />
+                          </svg>
+                          Share
+                        </button>
+                        <Link
+                          to={`/edit-paywall/${paywall.id}`}
+                          className="inline-flex items-center px-2 py-1 border border-gray-300 shadow-sm text-xs leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600"
+                        >
+                          <svg 
+                            className="h-4 w-4 mr-1" 
+                            fill="none" 
+                            viewBox="0 0 24 24" 
+                            stroke="currentColor"
+                          >
+                            <path 
+                              strokeLinecap="round" 
+                              strokeLinejoin="round" 
+                              strokeWidth="2" 
+                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                            />
+                          </svg>
+                          Edit
                         </Link>
                         <button
                           onClick={() => handleDuplicatePaywall(paywall)}
-                          className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600"
+                          className="inline-flex items-center px-2 py-1 border border-gray-300 shadow-sm text-xs leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600"
+                          title="Duplicate"
                         >
                           <svg
-                            className="h-4 w-4"
+                            className="h-4 w-4 mr-1"
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
@@ -605,6 +853,67 @@ const PaywallsManagement: React.FC = () => {
                               d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
                             />
                           </svg>
+                          Duplicate
+                        </button>
+                        <button
+                          onClick={() => handleArchivePaywall(paywall)}
+                          className="inline-flex items-center px-2 py-1 border border-gray-300 shadow-sm text-xs leading-4 font-medium rounded-md text-yellow-700 bg-yellow-100 hover:bg-yellow-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 dark:bg-yellow-900/30 dark:border-yellow-800 dark:text-yellow-200 dark:hover:bg-yellow-900/50"
+                          title="Archive"
+                        >
+                          <svg
+                            className="h-4 w-4 mr-1"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+                            />
+                          </svg>
+                          Archive
+                        </button>
+                        <button
+                          onClick={() => handleCopyEmbedCode(paywall.id)}
+                          className="inline-flex items-center px-2 py-1 border border-gray-300 shadow-sm text-xs leading-4 font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-200 dark:hover:bg-blue-900/50"
+                          title="Copy Embed Code"
+                        >
+                          <svg 
+                            className="h-4 w-4 mr-1" 
+                            fill="none" 
+                            viewBox="0 0 24 24" 
+                            stroke="currentColor"
+                          >
+                            <path 
+                              strokeLinecap="round" 
+                              strokeLinejoin="round" 
+                              strokeWidth="2" 
+                              d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"
+                            />
+                          </svg>
+                          Embed
+                        </button>
+                        <button
+                          onClick={() => handleDeletePaywall(paywall)}
+                          className="inline-flex items-center px-2 py-1 border border-gray-300 shadow-sm text-xs leading-4 font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:bg-red-900/30 dark:border-red-800 dark:text-red-200 dark:hover:bg-red-900/50"
+                          title="Delete"
+                        >
+                          <svg 
+                            className="h-4 w-4 mr-1" 
+                            fill="none" 
+                            viewBox="0 0 24 24" 
+                            stroke="currentColor"
+                          >
+                            <path 
+                              strokeLinecap="round" 
+                              strokeLinejoin="round" 
+                              strokeWidth="2" 
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                            />
+                          </svg>
+                          Delete
                         </button>
                       </div>
                     </div>
@@ -691,7 +1000,19 @@ const PaywallsManagement: React.FC = () => {
                           </div>
                           <div className="mt-4">
                             <button
-                              onClick={() => alert('Access settings would be configured here')}
+                              onClick={() => {
+                                console.log('Access settings button clicked');
+                                // If there's at least one paywall, open access settings for the first one
+                                if (paywalls?.paywalls && paywalls.paywalls.length > 0) {
+                                  const firstPaywall = paywalls.paywalls[0];
+                                  console.log('Selected paywall for access settings:', firstPaywall);
+                                  setSelectedPaywall(firstPaywall);
+                                  setShowAccessSettings(true);
+                                } else {
+                                  console.log('No paywalls available for access settings');
+                                  alert('No paywalls available. Create a paywall first.');
+                                }
+                              }}
                               className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600"
                             >
                               Configure
@@ -727,7 +1048,19 @@ const PaywallsManagement: React.FC = () => {
                           </div>
                           <div className="mt-4">
                             <button
-                              onClick={() => alert('Embed codes would be generated here')}
+                              onClick={() => {
+                                console.log('Embed codes button clicked');
+                                // If there's at least one paywall, show embed codes for the first one
+                                if (paywalls?.paywalls && paywalls.paywalls.length > 0) {
+                                  const firstPaywall = paywalls.paywalls[0];
+                                  console.log('Selected paywall:', firstPaywall);
+                                  setSelectedPaywall(firstPaywall);
+                                  setShowEmbedCodes(true);
+                                } else {
+                                  console.log('No paywalls available');
+                                  alert('No paywalls available. Create a paywall first.');
+                                }
+                              }}
                               className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600"
                             >
                               Generate
@@ -742,6 +1075,14 @@ const PaywallsManagement: React.FC = () => {
                   <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                     <thead className="bg-gray-50 dark:bg-gray-700">
                       <tr>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300">
+                          <input
+                            type="checkbox"
+                            checked={filteredAndSortedPaywalls.length > 0 && selectedPaywalls.size === filteredAndSortedPaywalls.length}
+                            onChange={toggleSelectAll}
+                            className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600"
+                          />
+                        </th>
                         <th
                           scope="col"
                           className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300 cursor-pointer"
@@ -749,7 +1090,6 @@ const PaywallsManagement: React.FC = () => {
                         >
                           <div className="flex items-center">
                             Paywall
-                            <span className="ml-1">{getSortIcon('title')}</span>
                           </div>
                         </th>
                         <th
@@ -758,19 +1098,15 @@ const PaywallsManagement: React.FC = () => {
                           onClick={() => handleSort('createdAt')}
                         >
                           <div className="flex items-center">
-                            Created
+                            Date
                             <span className="ml-1">{getSortIcon('createdAt')}</span>
                           </div>
                         </th>
                         <th
                           scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300 cursor-pointer"
-                          onClick={() => handleSort('sales')}
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300"
                         >
-                          <div className="flex items-center">
-                            Sales
-                            <span className="ml-1">{getSortIcon('sales')}</span>
-                          </div>
+                          Stats
                         </th>
                         <th
                           scope="col"
@@ -781,12 +1117,6 @@ const PaywallsManagement: React.FC = () => {
                             Revenue
                             <span className="ml-1">{getSortIcon('revenue')}</span>
                           </div>
-                        </th>
-                        <th
-                          scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300"
-                        >
-                          Performance
                         </th>
                         <th
                           scope="col"
@@ -815,12 +1145,42 @@ const PaywallsManagement: React.FC = () => {
                         return paginatedPaywalls.map(paywall => (
                           <tr
                             key={paywall.id}
-                            className="hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                            className={`hover:bg-gray-50 dark:hover:bg-gray-700/50 ${selectedPaywalls.has(paywall.id) ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
                           >
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <input
+                                type="checkbox"
+                                checked={selectedPaywalls.has(paywall.id)}
+                                onChange={() => toggleSelectPaywall(paywall.id)}
+                                className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600"
+                              />
+                            </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="flex items-center">
                                 <div className="flex-shrink-0 h-10 w-10">
-                                  <div className="bg-gray-200 border-2 border-dashed rounded-xl w-10 h-10 dark:bg-gray-700" />
+                                  {paywall.thumbnailUrl ? (
+                                    <img 
+                                      src={paywall.thumbnailUrl} 
+                                      alt={paywall.title || 'Paywall thumbnail'} 
+                                      className="h-10 w-10 rounded-md object-cover"
+                                    />
+                                  ) : (
+                                    <div className="bg-gray-200 border-2 border-dashed rounded-md w-10 h-10 flex items-center justify-center dark:bg-gray-700">
+                                      <svg 
+                                        className="h-5 w-5 text-gray-400" 
+                                        fill="none" 
+                                        viewBox="0 0 24 24" 
+                                        stroke="currentColor"
+                                      >
+                                        <path 
+                                          strokeLinecap="round" 
+                                          strokeLinejoin="round" 
+                                          strokeWidth="2" 
+                                          d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                        />
+                                      </svg>
+                                    </div>
+                                  )}
                                 </div>
                                 <div className="ml-4">
                                   <div className="text-sm font-medium text-gray-900 dark:text-white">
@@ -836,7 +1196,16 @@ const PaywallsManagement: React.FC = () => {
                               {new Date(paywall.createdAt || '').toLocaleDateString()}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                              {paywall.sales || 0}
+                              <div className="space-y-1">
+                                <div className="flex items-center">
+                                  <span className="w-20 text-gray-500 dark:text-gray-400">Views:</span>
+                                  <span className="font-medium">{performanceData[paywall.id]?.views || 0}</span>
+                                </div>
+                                <div className="flex items-center">
+                                  <span className="w-20 text-gray-500 dark:text-gray-400">Purchases:</span>
+                                  <span className="font-medium">{paywall.sales || 0}</span>
+                                </div>
+                              </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                               <span className="font-medium">
@@ -845,19 +1214,6 @@ const PaywallsManagement: React.FC = () => {
                                   ? paywall.revenue.toFixed(2)
                                   : '0.00'}
                               </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              {performanceData[paywall.id] && (
-                                <div className="text-sm text-gray-500 dark:text-gray-400">
-                                  <div>Views: {performanceData[paywall.id]?.views || 0}</div>
-                                  <div>
-                                    Conversions: {performanceData[paywall.id]?.conversions || 0}
-                                  </div>
-                                  <div>
-                                    Rate: {performanceData[paywall.id]?.conversionRate || 0}%
-                                  </div>
-                                </div>
-                              )}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span
@@ -870,22 +1226,118 @@ const PaywallsManagement: React.FC = () => {
                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                               <div className="flex justify-end space-x-2">
                                 <Link
-                                  to={`/paywall/${paywall.id}`}
+                                  to={`/edit-paywall/${paywall.id}`}
                                   className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                                  title="Edit"
                                 >
-                                  View
+                                  <svg 
+                                    className="h-5 w-5" 
+                                    fill="none" 
+                                    viewBox="0 0 24 24" 
+                                    stroke="currentColor"
+                                  >
+                                    <path 
+                                      strokeLinecap="round" 
+                                      strokeLinejoin="round" 
+                                      strokeWidth="2" 
+                                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                    />
+                                  </svg>
                                 </Link>
+                                <button
+                                  onClick={() => handleSharePaywall(paywall)}
+                                  className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300"
+                                  title="Share"
+                                >
+                                  <svg 
+                                    className="h-5 w-5" 
+                                    fill="none" 
+                                    viewBox="0 0 24 24" 
+                                    stroke="currentColor"
+                                  >
+                                    <path 
+                                      strokeLinecap="round" 
+                                      strokeLinejoin="round" 
+                                      strokeWidth="2" 
+                                      d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
+                                    />
+                                  </svg>
+                                </button>
                                 <button
                                   onClick={() => handleDuplicatePaywall(paywall)}
                                   className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300"
+                                  title="Duplicate"
                                 >
-                                  Duplicate
+                                  <svg
+                                    className="h-5 w-5"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth="2"
+                                      d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                                    />
+                                  </svg>
+                                </button>
+                                <button
+                                  onClick={() => handleCopyEmbedCode(paywall.id)}
+                                  className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                                  title="Copy Embed Code"
+                                >
+                                  <svg 
+                                    className="h-5 w-5" 
+                                    fill="none" 
+                                    viewBox="0 0 24 24" 
+                                    stroke="currentColor"
+                                  >
+                                    <path 
+                                      strokeLinecap="round" 
+                                      strokeLinejoin="round" 
+                                      strokeWidth="2" 
+                                      d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"
+                                    />
+                                  </svg>
                                 </button>
                                 <button
                                   onClick={() => handleArchivePaywall(paywall)}
-                                  className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                                  className="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300"
+                                  title="Archive"
                                 >
-                                  Archive
+                                  <svg
+                                    className="h-5 w-5"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth="2"
+                                      d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+                                    />
+                                  </svg>
+                                </button>
+                                <button
+                                  onClick={() => handleDeletePaywall(paywall)}
+                                  className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                                  title="Delete"
+                                >
+                                  <svg 
+                                    className="h-5 w-5" 
+                                    fill="none" 
+                                    viewBox="0 0 24 24" 
+                                    stroke="currentColor"
+                                  >
+                                    <path 
+                                      strokeLinecap="round" 
+                                      strokeLinejoin="round" 
+                                      strokeWidth="2" 
+                                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                    />
+                                  </svg>
                                 </button>
                               </div>
                             </td>
@@ -1069,6 +1521,63 @@ const PaywallsManagement: React.FC = () => {
           </div>
         </div>
       </main>
+      
+      {/* Access Settings Modal */}
+      {showAccessSettings && selectedPaywall && (
+        <AccessSettings 
+          paywall={selectedPaywall} 
+          onClose={() => setShowAccessSettings(false)} 
+        />
+      )}
+      
+      {/* Embed Codes Modal */}
+      {showEmbedCodes && selectedPaywall && (
+        <div className="fixed inset-0 overflow-hidden z-50">
+          <div className="absolute inset-0 overflow-hidden">
+            <div
+              className="absolute inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+              onClick={() => setShowEmbedCodes(false)}
+            ></div>
+            <div className="fixed inset-y-0 right-0 max-w-full flex">
+              <div className="relative w-screen max-w-md">
+                <div className="h-full flex flex-col bg-white shadow-xl dark:bg-gray-800">
+                  <div className="flex-1 overflow-y-auto py-6 px-4 sm:px-6">
+                    <div className="flex items-start justify-between">
+                      <h2 className="text-lg font-medium text-gray-900 dark:text-white">
+                        Embed Codes
+                      </h2>
+                      <button
+                        type="button"
+                        className="ml-3 h-7 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        onClick={() => setShowEmbedCodes(false)}
+                      >
+                        <span className="sr-only">Close panel</span>
+                        <svg
+                          className="h-6 w-6"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                    <div className="mt-8">
+                      <EmbedCodeGenerator paywall={selectedPaywall} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

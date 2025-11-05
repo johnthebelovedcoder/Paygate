@@ -1,7 +1,9 @@
 // analyticsService.ts - Analytics and reporting service
-import { apiService } from './api';
+import { useRef, useEffect } from 'react';
+import type { AxiosInstance } from 'axios';
 import type { RevenueData, DailyRevenueData } from '../types/global';
 import type { AnalyticsResponse } from './analyticsDataService';
+import { useAuthApi } from '../hooks/useAuthApi';
 import type {
   GeographicData,
   TrafficSource,
@@ -16,12 +18,24 @@ import type {
   CustomerData,
 } from '../types/analytics.types';
 
+// Define the API client interface
+export interface IApiClient {
+  get: <T>(url: string, config?: any) => Promise<T>;
+  post: <T>(url: string, data?: any, config?: any) => Promise<T>;
+  put: <T>(url: string, data?: any, config?: any) => Promise<T>;
+  delete: <T>(url: string, config?: any) => Promise<T>;
+}
+
 class AnalyticsService {
+  private api: IApiClient;
+
+  constructor(apiClient: IApiClient) {
+    this.api = apiClient;
+  }
   // Get dashboard statistics
   async getDashboardStats(): Promise<DashboardStats> {
     try {
-      const response =
-        await apiService.get<AnalyticsResponse<DashboardStats>>('/analytics/dashboard');
+      const response = await this.api.get<AnalyticsResponse<DashboardStats>>('/analytics/dashboard');
       return (
         response.data || {
           totalRevenue: 0,
@@ -59,7 +73,7 @@ class AnalyticsService {
   ): Promise<RevenueData[] | DailyRevenueData[]> {
     try {
       const params = new URLSearchParams();
-      if (timeRange) params.append('range', timeRange);
+      if (timeRange) params.append('time_range', timeRange);
       if (customStartDate) params.append('startDate', customStartDate);
       if (customEndDate) params.append('endDate', customEndDate);
 
@@ -67,7 +81,7 @@ class AnalyticsService {
       const url = `/analytics/revenue${queryString ? `?${queryString}` : ''}`;
 
       const response =
-        await apiService.get<AnalyticsResponse<RevenueData[] | DailyRevenueData[]>>(url);
+        await this.api.get<AnalyticsResponse<RevenueData[] | DailyRevenueData[]>>(url);
       return response.data || [];
     } catch (error) {
       const err = error as Error;
@@ -78,10 +92,16 @@ class AnalyticsService {
   }
 
   // Get top paywalls
-  async getTopPaywalls(): Promise<TopPaywall[]> {
+  async getTopPaywalls(limit: number = 5): Promise<TopPaywall[]> {
     try {
+      const params = new URLSearchParams();
+      params.append('limit', limit.toString());
+      
+      const queryString = params.toString();
+      const url = `/analytics/top-paywalls${queryString ? `?${queryString}` : ''}`;
+      
       const response =
-        await apiService.get<AnalyticsResponse<TopPaywall[]>>('/analytics/top-paywalls');
+        await this.api.get<AnalyticsResponse<TopPaywall[]>>(url);
       return response.data || [];
     } catch (error) {
       const err = error as Error;
@@ -127,7 +147,7 @@ class AnalyticsService {
   async getCustomerData(): Promise<CustomerData> {
     try {
       const response =
-        await apiService.get<AnalyticsResponse<CustomerData>>('/analytics/customers');
+        await this.api.get<AnalyticsResponse<CustomerData>>('/analytics/customers');
       return (
         response.data || {
           totalCustomers: 0,
@@ -252,7 +272,7 @@ class AnalyticsService {
   async getRevenueForecast(): Promise<RevenueForecast> {
     try {
       const response = 
-        await apiService.get<AnalyticsResponse<RevenueForecast>>('/analytics/revenue-forecast');
+        await this.api.get<AnalyticsResponse<RevenueForecast>>('/analytics/revenue-forecast');
       return response.data || {
         forecast: [],
         trend: 'stable',
@@ -274,7 +294,7 @@ class AnalyticsService {
   async getContentAnalytics(): Promise<any> {
     try {
       const response = 
-        await apiService.get<AnalyticsResponse<any>>('/analytics/creator/content-analytics');
+        await this.api.get<AnalyticsResponse<any>>('/analytics/creator/content-analytics');
       return response.data || {};
     } catch (error) {
       const err = error as Error;
@@ -288,7 +308,7 @@ class AnalyticsService {
   async getPopularContent(): Promise<any[]> {
     try {
       const response = 
-        await apiService.get<AnalyticsResponse<any[]>>('/analytics/creator/content-popular');
+        await this.api.get<AnalyticsResponse<any[]>>('/analytics/creator/content-popular');
       return Array.isArray(response.data) ? response.data : [];
     } catch (error) {
       const err = error as Error;
@@ -302,7 +322,7 @@ class AnalyticsService {
   async getContentProtectionSettings(): Promise<any> {
     try {
       const response = 
-        await apiService.get<AnalyticsResponse<any>>('/analytics/creator/content-protection');
+        await this.api.get<AnalyticsResponse<any>>('/analytics/creator/content-protection');
       return response.data || {};
     } catch (error) {
       const err = error as Error;
@@ -340,7 +360,7 @@ class AnalyticsService {
   async updateContentProtectionSettings(settings: any): Promise<any> {
     try {
       const response = 
-        await apiService.put<AnalyticsResponse<any>>('/analytics/creator/content-protection', settings);
+        await this.api.put<AnalyticsResponse<any>>('/analytics/creator/content-protection', settings);
       return response.data || {};
     } catch (error) {
       const err = error as Error;
@@ -351,5 +371,39 @@ class AnalyticsService {
   }
 }
 
-const analyticsService = new AnalyticsService();
-export default analyticsService;
+// Create a default instance for backward compatibility
+import { apiService } from './api';
+
+// Create a default instance with the basic API client (for non-hook usage)
+const defaultAnalyticsService = new AnalyticsService({
+  get: apiService.get,
+  post: apiService.post,
+  put: apiService.put,
+  delete: apiService.delete,
+});
+
+// Create a function to get an instance with the authenticated API client
+export const createAnalyticsService = (authApi: any) => {
+  return new AnalyticsService({
+    get: authApi.get,
+    post: authApi.post,
+    put: authApi.put,
+    delete: authApi.delete,
+  });
+};
+
+// Create a hook to get an instance with the authenticated API client
+export const useAnalyticsService = () => {
+  const authApi = useAuthApi();
+  const analyticsService = useRef<AnalyticsService | null>(null);
+  
+  // Create or update the service instance when authApi changes
+  useEffect(() => {
+    analyticsService.current = createAnalyticsService(authApi);
+  }, [authApi]);
+  
+  return analyticsService.current;
+};
+
+export { AnalyticsService };
+export default defaultAnalyticsService;

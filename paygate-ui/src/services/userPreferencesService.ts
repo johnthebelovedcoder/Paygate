@@ -35,7 +35,7 @@ class UserPreferencesService {
   // Get user preferences
   async getPreferences(): Promise<UserPreferencesResponse> {
     try {
-      const response = await apiService.get<UserPreferencesResponse>('/user/preferences');
+      const response = await apiService.get<UserPreferencesResponse>('/users/me/preferences');
       return response;
     } catch (error: unknown) {
       if (isAxiosError(error) && error.response?.data) {
@@ -53,7 +53,7 @@ class UserPreferencesService {
   ): Promise<UserPreferencesResponse> {
     try {
       const response = await apiService.put<UserPreferencesResponse>(
-        '/user/preferences',
+        '/users/me/preferences',
         preferences
       );
       return response;
@@ -71,7 +71,7 @@ class UserPreferencesService {
   async validateContentTypes(contentTypes: string[]): Promise<ValidationResponse> {
     try {
       const response = await apiService.post<ValidationResponse>(
-        '/user/preferences/validate-content-types',
+        '/users/me/preferences/validate-content-types',
         { contentTypes }
       );
       return response;
@@ -89,7 +89,7 @@ class UserPreferencesService {
   async validateUserType(userType: string): Promise<ValidationResponse> {
     try {
       const response = await apiService.post<ValidationResponse>(
-        '/user/preferences/validate-user-type',
+        '/users/me/preferences/validate-user-type',
         { userType }
       );
       return response;

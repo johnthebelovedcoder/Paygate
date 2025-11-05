@@ -1,5 +1,5 @@
 from celery import current_task
-from .celery_worker import celery_app
+from celery_worker import celery_app
 import logging
 from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession

@@ -129,3 +129,23 @@ async def add_ticket_response(
         )
     created_response = await support_service.create_ticket_response(db, response)
     return created_response
+
+
+@router.get("/support/statistics")
+async def get_support_statistics(
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get support statistics for the current user or all users if admin"""
+    if current_user.role == "admin":
+        stats = await support_service.get_support_statistics(db)
+    else:
+        stats = await support_service.get_user_support_statistics(db, current_user.id)
+    
+    return {
+        "total_tickets": stats.get("total_tickets", 0),
+        "open_tickets": stats.get("open_tickets", 0),
+        "closed_tickets": stats.get("closed_tickets", 0),
+        "average_response_time": stats.get("average_response_time", 0),
+        "satisfaction_rating": stats.get("satisfaction_rating", 0)
+    }

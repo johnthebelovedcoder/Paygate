@@ -31,19 +31,19 @@ const Navigation: React.FC = () => {
       icon: 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z',
     },
     {
-      name: 'Content Management',
-      href: '/content-management',
-      icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
+      name: 'Analytics',
+      href: '/analytics',
+      icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
     },
     {
       name: 'Customers',
       href: '/customers',
-      icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z',
+      icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 01-4 0 2 2 0 014 0zM7 10a2 2 0 01-4 0 2 2 0 014 0z',
     },
     {
-      name: 'Analytics',
-      href: '/analytics',
-      icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
+      name: 'Content',
+      href: '/content-management',
+      icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
     },
     {
       name: 'Marketing',
@@ -55,6 +55,59 @@ const Navigation: React.FC = () => {
       href: '/settings',
       icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z',
     },
+    {
+      name: 'Help',
+      href: '/help',
+      icon: 'M8.227 9.895l-5.227 6.105a1 1 0 00.773 1.638h14.454a1 1 0 00.773-1.638l-5.227-6.105c-.31-.365-.762-.56-1.227-.56s-.916.195-1.227.56zM12 5a3 3 0 100 6 3 3 0 000-6z',
+    },
+  ];
+
+  const mobileNavigation = [
+    {
+      name: 'Dashboard',
+      href: '/',
+      icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
+    },
+    {
+      name: 'Paywalls',
+      href: '/paywalls',
+      icon: 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z',
+    },
+    {
+      name: 'Analytics',
+      href: '/analytics',
+      icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
+    },
+    {
+      name: 'Customers',
+      href: '/customers',
+      icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 01-4 0 2 2 0 014 0zM7 10a2 2 0 01-4 0 2 2 0 014 0z',
+    },
+    {
+      name: 'More',
+      items: [
+        {
+          name: 'Content',
+          href: '/content-management',
+          icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
+        },
+        {
+          name: 'Marketing',
+          href: '/marketing',
+          icon: 'M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z',
+        },
+        {
+          name: 'Settings',
+          href: '/settings',
+          icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z',
+        },
+        {
+          name: 'Help',
+          href: '/help',
+          icon: 'M8.227 9.895l-5.227 6.105a1 1 0 00.773 1.638h14.454a1 1 0 00.773-1.638l-5.227-6.105c-.31-.365-.762-.56-1.227-.56s-.916.195-1.227.56zM12 5a3 3 0 100 6 3 3 0 000-6z',
+        },
+      ]
+    }
   ];
 
   const handleLogout = async () => {
@@ -251,70 +304,88 @@ const Navigation: React.FC = () => {
       </div>
 
       {/* Mobile menu */}
-      <div className={`${mobileMenuOpen ? 'block' : 'hidden'} sm:hidden`}>
-        <div className="pt-2 pb-3 space-y-1">
-          {navigation.map(item => (
-            <Link
-              key={item.name}
-              to={item.href}
-              className={`${darkMode ? 'dark' : ''}
-                ${
-                  location.pathname === item.href
-                    ? 'bg-indigo-50 border-indigo-500 text-indigo-700 dark:bg-gray-700 dark:border-indigo-500 dark:text-indigo-200'
-                    : 'border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'
-                } block pl-3 pr-4 py-2 border-l-4 text-base font-medium`}
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              <svg
-                className="h-5 w-5 mr-1 inline"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+      {mobileMenuOpen && (
+        <div className="sm:hidden fixed inset-0 z-40 bg-black bg-opacity-50" onClick={() => setMobileMenuOpen(false)}>
+          <div className="relative bg-white dark:bg-gray-800 shadow-lg w-full max-w-xs h-full overflow-y-auto transform transition-transform duration-300 ease-in-out" onClick={(e) => e.stopPropagation()}>
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-end">
+              <button
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={item.icon} />
-              </svg>
-              {item.name}
-            </Link>
-          ))}
-        </div>
-        <div className="pt-4 pb-3 border-t border-gray-200 dark:border-gray-700">
-          <div className="flex items-center px-4">
-            <div className="flex-shrink-0">
-              <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center dark:bg-gray-700">
-                <span className="text-indigo-800 font-medium dark:text-indigo-200">JD</span>
-              </div>
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
             </div>
-            <div className="ml-3">
-              <div className="text-base font-medium text-gray-800 dark:text-white">John Doe</div>
-              <div className="text-sm font-medium text-gray-500 dark:text-gray-300">
-                john@example.com
+            <div className="pt-2 pb-3 px-4 space-y-1">
+              {navigation.map(item => (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className={`${
+                    location.pathname === item.href
+                      ? 'bg-indigo-50 border-indigo-500 text-indigo-700 dark:bg-gray-700 dark:border-indigo-500 dark:text-indigo-200'
+                      : 'border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'
+                  } block pl-3 pr-4 py-3 rounded-md text-base font-medium flex items-center`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <svg
+                    className="h-5 w-5 mr-3 flex-shrink-0"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={item.icon} />
+                  </svg>
+                  <span className="truncate">{item.name}</span>
+                </Link>
+              ))}
+            </div>
+            <div className="pt-4 pb-3 border-t border-gray-200 dark:border-gray-700 px-4">
+              <div className="flex items-center mb-4">
+                <div className="flex-shrink-0">
+                  <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center dark:bg-gray-700">
+                    <span className="text-indigo-800 font-medium dark:text-indigo-200">JD</span>
+                  </div>
+                </div>
+                <div className="ml-3 overflow-hidden">
+                  <div className="text-base font-medium text-gray-800 dark:text-white truncate">John Doe</div>
+                  <div className="text-sm font-medium text-gray-500 dark:text-gray-300 truncate">
+                    john@example.com
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Link
+                  to="/settings"
+                  className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-700 rounded-md"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Settings
+                </Link>
+                <Link
+                  to="/profile"
+                  className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-700 rounded-md"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Profile
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="block w-full text-left px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-700 rounded-md"
+                >
+                  Sign out
+                </button>
               </div>
             </div>
           </div>
-          <div className="mt-3 space-y-1">
-            <Link
-              to="/settings"
-              className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-700"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Settings
-            </Link>
-            <Link
-              to="/profile"
-              className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-700"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Profile
-            </Link>
-            <button
-              onClick={handleLogout}
-              className="block w-full text-left px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-700"
-            >
-              Sign out
-            </button>
-          </div>
         </div>
-      </div>
+      )}
 
       <ConfirmationModal
         isOpen={showLogoutModal}

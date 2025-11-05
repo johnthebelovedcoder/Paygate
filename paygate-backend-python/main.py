@@ -1,52 +1,36 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, Request, Response, status
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from config.database import engine
 from models import Base
-from routes import auth, users, paywall, content, payment, customer, analytics, upload, access, billing, notification, support, marketing
+from routes import auth, users, paywall, content, payment, customer, analytics, upload, access, billing, notification, support, marketing, communication
 from utils.middleware.advanced_rate_limit import rate_limit_middleware
 from utils.middleware.security_headers import SecurityHeadersMiddleware
 from utils.cache import cache
+from config.cors import setup_cors
 
 # Import all models to ensure they're registered with SQLAlchemy
 import models
 
+# Create FastAPI application
 app = FastAPI(
     title="Paygate API", 
     version="1.0.0",
     docs_url="/docs",  # Enable Swagger UI
-    redoc_url="/redoc"  # Enable ReDoc
+    redoc_url="/redoc",  # Enable ReDoc
+    # Disable default CORS middleware
+    openapi_url="/openapi.json",
+    servers=[
+        {"url": "http://localhost:8000", "description": "Local development server"},
+    ]
 )
 
-@app.on_event("startup")
-async def startup_event():
-    async with engine.begin() as conn:
-        # Create all tables defined in models
-        await conn.run_sync(Base.metadata.create_all)
-    await cache.init_cache()
-    
-    # Log that startup is complete
-    print("Database tables created successfully")
+# Configure CORS - This must be called before adding other middleware
+setup_cors(app)
 
-# CORS middleware - specify origins for security
-# In production, update these to match your actual frontend domains
-frontend_origins = [
-    "http://localhost:3000",    # React default
-    "http://localhost:5173",    # Vite default
-    "http://localhost:8080",    # Vue dev server
-    "https://localhost:3000",
-    "https://localhost:5173",
-    "https://paygate.com",      # Production domain (example)
-    "https://www.paygate.com",  # Production domain (example)
-]
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=frontend_origins,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
-)
 
 # Add security headers middleware
 app.add_middleware(SecurityHeadersMiddleware)
@@ -73,6 +57,7 @@ app.include_router(billing.router, prefix="/api", tags=["billing"])
 app.include_router(notification.router, prefix="/api", tags=["notifications"])
 app.include_router(support.router, prefix="/api", tags=["support"])
 app.include_router(marketing.router, prefix="/api", tags=["marketing"])
+app.include_router(communication.router, prefix="/api", tags=["communication"])
 
 @app.get("/")
 def read_root():
@@ -87,3 +72,12 @@ def health_check():
 @app.get("/api/health")
 def health_check_v1():
     return {"status": "healthy", "message": "Paygate API v1 is running"}
+
+
+# Create uploads directory if it doesn't exist
+import os
+os.makedirs("uploads", exist_ok=True)
+os.makedirs("uploads/avatars", exist_ok=True)
+
+# Mount static files directory to serve uploaded avatars
+app.mount("/api/uploads", StaticFiles(directory="uploads"), name="uploads")

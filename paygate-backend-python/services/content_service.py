@@ -67,21 +67,40 @@ async def get_all_content(db: AsyncSession) -> List[Content]:
     return result.scalars().all()
 
 
-async def create_content(db: AsyncSession, content: ContentCreate) -> Content:
-    db_content = Content(
-        title=content.title,
-        description=content.description,
-        type=content.type,
-        url=content.url,
-        is_protected=content.is_protected,
-        price=content.price,
-        currency=content.currency,
-        owner_id=content.owner_id
-    )
-    db.add(db_content)
-    await db.commit()
-    await db.refresh(db_content)
-    return db_content
+async def create_content(db: AsyncSession, content_data) -> Content:
+    try:
+        # Handle both dict and Pydantic model
+        if isinstance(content_data, dict):
+            db_content = Content(
+                title=content_data.get('title', ''),
+                description=content_data.get('description'),
+                type=content_data.get('type', 'file'),
+                url=content_data.get('url'),
+                is_protected=content_data.get('is_protected', False),
+                price=content_data.get('price'),
+                currency=content_data.get('currency', 'USD'),
+                owner_id=content_data.get('owner_id')
+            )
+        else:
+            db_content = Content(
+                title=getattr(content_data, 'title', ''),
+                description=getattr(content_data, 'description', None),
+                type=getattr(content_data, 'type', 'file'),
+                url=getattr(content_data, 'url', None),
+                is_protected=getattr(content_data, 'is_protected', False),
+                price=getattr(content_data, 'price', None),
+                currency=getattr(content_data, 'currency', 'USD'),
+                owner_id=getattr(content_data, 'owner_id')
+            )
+        
+        db.add(db_content)
+        await db.commit()
+        await db.refresh(db_content)
+        return db_content
+    except Exception as e:
+        # Log the error for debugging
+        print(f"Error creating content: {str(e)}")
+        raise  # Re-raise the exception so it can be handled upstream
 
 
 async def update_content(db: AsyncSession, content_id: int, content_update: ContentUpdate) -> Optional[Content]:

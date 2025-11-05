@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import Header from './Header';
 import StatsCard from './StatsCard';
 import AnalyticsChart from './AnalyticsChart';
+import Chart from 'react-apexcharts';
 
 import { useAuth } from '../contexts/AuthContext';
 import useAnalytics from '../hooks/useAnalytics';
@@ -64,7 +65,7 @@ const ComprehensiveDashboard: React.FC = () => {
 
   // Convert data for charts when revenueData changes
   useEffect(() => {
-    if (revenueData.length > 0) {
+    if (revenueData && revenueData.length > 0) {
       // Check if we have daily data or monthly data
       if ('date' in revenueData[0]) {
         // Daily data
@@ -88,7 +89,7 @@ const ComprehensiveDashboard: React.FC = () => {
 
   // Calculate conversion rate
   const calculateConversionRate = () => {
-    if (!stats) return 0;
+    if (!stats || !stats.recentPayments) return 0;
     // In a real app, this would be calculated from actual data
     // For now, we'll use a realistic calculation based on the data we have
     return Math.round((stats.recentPayments / (stats.recentPayments + 10)) * 1000) / 10;
@@ -96,7 +97,7 @@ const ComprehensiveDashboard: React.FC = () => {
 
   // Prepare growth metrics data
   useEffect(() => {
-    if (customerData) {
+    if (customerData && customerData.customerGrowth) {
       // Calculate customer growth percentage
       const customerGrowth = customerData.customerGrowth;
       if (customerGrowth.length >= 2) {
@@ -131,14 +132,14 @@ const ComprehensiveDashboard: React.FC = () => {
 
   // Prepare performance highlights
   useEffect(() => {
-    if (topPaywalls.length > 0) {
+    if (topPaywalls && topPaywalls.length > 0) {
       const topPerforming = topPaywalls[0];
       setPerformanceHighlights([
         {
           id: '1',
           title: 'Top Performing Content',
-          value: topPerforming.title,
-          description: `${topPerforming.sales} sales, ${formatCurrency(topPerforming.revenue)} revenue`,
+          value: topPerforming.title || 'N/A',
+          description: `${topPerforming.sales || 0} sales, ${formatCurrency(topPerforming.revenue || 0)} revenue`,
           change: '+12.5%',
           changeType: 'positive',
         },
@@ -400,13 +401,13 @@ const ComprehensiveDashboard: React.FC = () => {
                   <div className="flex justify-center items-center h-32">
                     <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-600"></div>
                   </div>
-                ) : recentTransactions.length === 0 ? (
+                ) : recentTransactions && recentTransactions.length === 0 ? (
                   <div className="p-4 text-center text-gray-500 dark:text-gray-400">
                     No recent transactions found
                   </div>
                 ) : (
                   <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {recentTransactions.slice(0, 5).map(transaction => (
+                    {(recentTransactions || []).slice(0, 5).map(transaction => (
                       <li key={transaction.id} className="px-4 py-4 sm:px-6">
                         <div className="flex items-center">
                           <div className="flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center bg-green-500">

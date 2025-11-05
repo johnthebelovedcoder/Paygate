@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import paywallService, { type Paywall } from '../services/paywallService';
-import { useAuth } from '../contexts';
+import { useAuth } from '../contexts/AuthContext';
 import type { AxiosError } from 'axios';
 
 function isAxiosError(error: unknown): error is AxiosError {
@@ -18,7 +18,7 @@ const usePaywalls = (): UsePaywallsReturn => {
   const [paywalls, setPaywalls] = useState<Paywall[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, authInitialized } = useAuth();
   // Use ref instead of state for debounce timer to avoid stale closures
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -79,7 +79,7 @@ const usePaywalls = (): UsePaywallsReturn => {
   }, []);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (authInitialized && isAuthenticated) {
       fetchPaywalls();
     }
 
@@ -89,7 +89,7 @@ const usePaywalls = (): UsePaywallsReturn => {
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, authInitialized]);
 
   // Also return an immediate refresh function without debounce for critical updates
   const immediateRefreshPaywalls = useCallback(async () => {
@@ -99,9 +99,12 @@ const usePaywalls = (): UsePaywallsReturn => {
     await fetchPaywalls(true);
   }, []);
 
+  // Return loading state while auth is initializing
+  const effectiveLoading = authInitialized ? loading : true;
+
   return {
     paywalls,
-    loading,
+    loading: effectiveLoading,
     error,
     refreshPaywalls: immediateRefreshPaywalls, // Use immediate refresh as default
   };

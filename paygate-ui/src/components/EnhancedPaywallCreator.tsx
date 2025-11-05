@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import Header from './Header';
 import notificationService from '../services/notificationService';
 import { useToast } from '../contexts';
-import FileUpload from './FileUpload';
+import EnhancedFileUpload from './EnhancedFileUpload';
 import ContentSelector from './ContentSelector';
 import PaywallPreview from './PaywallPreview';
 import ContentPreview from './ContentPreview';
@@ -274,6 +274,22 @@ const PaywallCreator: React.FC = () => {
       // Create the paywall data based on the selected type
       let paywallData: CreatePaywallData;
 
+      // Determine status based on publish option
+      const status = publishOption === 'immediate' ? 'active' : 'draft'; // Changed from 'published' to 'active'
+
+      // Determine price based on pricing model
+      let finalPrice = 0;
+      if (pricingModel === 'subscription') {
+        // For subscription, use monthly price if available, otherwise annual price
+        finalPrice = monthlyPrice > 0 ? monthlyPrice : (annualPrice > 0 ? annualPrice : 0);
+      } else if (pricingModel === 'pay-what-you-want') {
+        // For pay-what-you-want, use minimumAmount as the suggested price
+        finalPrice = minimumAmount;
+      } else {
+        // For one-time payment, use the regular price
+        finalPrice = price;
+      }
+
       if (paywallType === 'file' && files.length > 0) {
         const file = files[0];
         let uploadResult: import('../services/contentService').FileUploadResponse;
@@ -302,54 +318,30 @@ const PaywallCreator: React.FC = () => {
           };
         }
 
-        let thumbnailUrl;
-        if (thumbnail) {
-          try {
-            const thumbnailResult = await contentService.uploadFile(thumbnail);
-            if (!thumbnailResult.data) {
-              throw new Error('Thumbnail upload response data is missing.');
-            }
-          } catch (thumbnailError: unknown) {
-            const err = thumbnailError as Error;
-            console.error('Error uploading thumbnail:', err);
-          }
-        }
-
         paywallData = {
           title,
           description,
-          price,
-          currency,
+          price: finalPrice,
+          currency: currency || 'USD', // Ensure currency is provided
           type: 'file',
           url: uploadResult?.data?.url || '',
-          thumbnailUrl,
-          status: publishOption === 'immediate' ? 'published' : 'draft', // Map publishOption to status
-          tags: [], // Assuming no direct UI for tags in this component
-          previewEnabled: previewStyle !== 'locked', // Example mapping
-          previewSettings: { style: previewStyle }, // Example mapping
-          socialShareEnabled: true, // Assuming social sharing is enabled by default
-          pricingModel,
+          status,
+          content_ids: [], // Empty array for files
         };
       } else if (paywallType === 'content' && selectedContent.length > 0) {
         const contentItem = selectedContent[0]; // Assuming only one content item is selected
-        let thumbnailUrl;
-        if (thumbnail) {
-          try {
-            const thumbnailResult = await contentService.uploadFile(thumbnail);
-            if (thumbnailResult.data) {
-              thumbnailUrl = thumbnailResult.data.url || undefined;
-            }
-          } catch (thumbnailError) {
-            console.error('Error uploading thumbnail:', thumbnailError);
-          }
-        }
+        
+        // Convert content IDs to numbers if they exist
+        const contentIds: number[] = selectedContent
+          .map(item => parseInt(item.id))
+          .filter(id => !isNaN(id));
 
         paywallData = {
           title,
           description,
-          price,
-          currency,
-          type: (contentItem?.type || 'file') as
+          price: finalPrice,
+          currency: currency || 'USD', // Ensure currency is provided
+          type: (contentItem?.type || 'content') as
             | 'file'
             | 'url'
             | 'content'
@@ -358,45 +350,22 @@ const PaywallCreator: React.FC = () => {
             | 'video'
             | 'image'
             | 'paywall',
-          contentId: contentItem?.id || '',
           url: contentItem?.url || '',
-          thumbnailUrl,
-          status: publishOption === 'immediate' ? 'published' : 'draft',
-          tags: [],
-          previewEnabled: previewStyle !== 'locked',
-          previewSettings: { style: previewStyle },
-          socialShareEnabled: true,
-          pricingModel,
+          status,
+          content_ids: contentIds, // Convert content IDs to integer array
         };
       } else if (paywallType === 'url' && urls.some(url => url.trim() !== '')) {
         const url = urls.find(u => u.trim() !== '') || '';
 
-        let thumbnailUrl;
-        if (thumbnail) {
-          try {
-            const thumbnailResult = await contentService.uploadFile(thumbnail);
-            if (thumbnailResult.data) {
-              thumbnailUrl = thumbnailResult.data.url || undefined;
-            }
-          } catch (thumbnailError) {
-            console.error('Error uploading thumbnail:', thumbnailError);
-          }
-        }
-
         paywallData = {
           title,
           description,
-          price,
-          currency,
+          price: finalPrice,
+          currency: currency || 'USD', // Ensure currency is provided
           type: 'url',
           url,
-          thumbnailUrl,
-          status: publishOption === 'immediate' ? 'published' : 'draft',
-          tags: [],
-          previewEnabled: previewStyle !== 'locked',
-          previewSettings: { style: previewStyle },
-          socialShareEnabled: true,
-          pricingModel,
+          status,
+          content_ids: [], // Empty array for URLs
         };
       } else {
         throw new Error('Please select content for your paywall');
@@ -692,7 +661,7 @@ const PaywallCreator: React.FC = () => {
                       </button>
                     </div>
                   ))}
-                  <FileUpload
+                  <EnhancedFileUpload
                     onFileSelect={file => {
                       setFiles(prev => [...prev, file]);
                     }}

@@ -1,6 +1,5 @@
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.orm import sessionmaker, declarative_base
 from config.settings import settings
 from sqlalchemy.pool import AsyncAdaptedQueuePool
 
@@ -19,16 +18,27 @@ engine = create_async_engine(
     }
 )
 
-# Create async session
-AsyncSessionLocal = sessionmaker(
-    engine, 
-    class_=AsyncSession, 
-    expire_on_commit=False
+# Create async session factory
+async_session = async_sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autoflush=False
 )
+
+# For backward compatibility
+AsyncSessionLocal = async_session
 
 Base = declarative_base()
 
 # Dependency to get DB session
 async def get_db():
-    async with AsyncSessionLocal() as session:
-        yield session
+    async with async_session() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception as e:
+            await session.rollback()
+            raise e
+        finally:
+            await session.close()

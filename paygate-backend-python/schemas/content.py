@@ -14,6 +14,16 @@ class ContentBase(BaseModel):
     owner_id: int = Field(..., gt=0)
 
 
+class ContentCreateRequest(BaseModel):  # New schema for request input (without owner_id)
+    title: str = Field(..., min_length=1, max_length=200)
+    description: Optional[str] = Field(None, max_length=1000)
+    type: str = Field(..., min_length=1, max_length=50)
+    url: Optional[str] = Field(None, max_length=500)
+    is_protected: bool = False
+    price: Optional[float] = Field(None, ge=0.0)  # greater than or equal to 0
+    currency: Optional[str] = Field("USD", min_length=3, max_length=3)
+
+
 class ContentCreate(ContentBase):
     pass
 

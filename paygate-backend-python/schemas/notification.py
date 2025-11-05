@@ -50,3 +50,11 @@ class NotificationPreference(NotificationPreferenceBase):
 
     class Config:
         from_attributes = True
+
+
+class NotificationPreferenceUpdate(BaseModel):
+    email_notifications: Optional[bool] = None
+    push_notifications: Optional[bool] = None
+    in_app_notifications: Optional[bool] = None
+    marketing_emails: Optional[bool] = None
+    newsletter: Optional[bool] = None

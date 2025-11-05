@@ -73,6 +73,20 @@ const AnalyticsDashboard: React.FC = () => {
     null
   );
   const [loading, setLoading] = useState(true);
+  const [timeoutError, setTimeoutError] = useState<string | null>(null);
+
+  // Add timeout fallback to prevent infinite loading
+  useEffect(() => {
+    if (loading) {
+      const timeout = setTimeout(() => {
+        console.warn('Analytics Dashboard data loading timeout - forcing to show with fallback data');
+        setTimeoutError('Data is taking longer than expected to load. Showing fallback data.');
+        setLoading(false); // Stop the loading state after timeout
+      }, 10000); // 10 seconds timeout
+
+      return () => clearTimeout(timeout);
+    }
+  }, [loading]);
 
   // Header actions
   const headerActions = (
@@ -208,8 +222,8 @@ const AnalyticsDashboard: React.FC = () => {
   const conversionRate = stats.conversionRate;
   const totalSales = stats.totalSales;
 
-  // Loading state
-  if (loading) {
+  // Loading state - show spinner only if not timed out
+  if (loading && !timeoutError) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <Header
@@ -238,6 +252,24 @@ const AnalyticsDashboard: React.FC = () => {
       <main>
         <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
           <div className="px-4 py-6 sm:px-0">
+            {/* Show timeout warning if data is taking too long */}
+            {timeoutError && (
+              <div className="mb-6 bg-yellow-50 border border-yellow-100 rounded-lg p-4 dark:bg-yellow-900/20 dark:border-yellow-900">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">Data Loading Issue</h3>
+                    <div className="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
+                      <p>{timeoutError}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             {/* Summary Cards */}
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
               <div className="bg-white overflow-hidden shadow rounded-lg dark:bg-gray-800 dark:shadow-gray-900/50">

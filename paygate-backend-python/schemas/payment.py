@@ -60,3 +60,35 @@ class PaymentResponse(BaseModel):
     success: bool
     message: str
     data: Optional[Payment] = None
+
+
+class PaymentMethodBase(BaseModel):
+    type: str  # "card", "bank", "wallet", etc.
+    provider: str  # "stripe", "paystack", "paypal", etc.
+    provider_customer_id: str
+    provider_payment_method_id: str
+    brand: Optional[str] = None  # Card brand (Visa, Mastercard, etc.)
+    last4: Optional[str] = None  # Last 4 digits of card
+    expiry_month: Optional[int] = None  # Expiry month for cards
+    expiry_year: Optional[int] = None  # Expiry year for cards
+    is_default: bool = False  # Whether this is the default payment method
+    is_active: bool = True  # Whether the payment method is active
+
+
+class PaymentMethodCreate(PaymentMethodBase):
+    user_id: int
+
+
+class PaymentMethodUpdate(BaseModel):
+    is_default: Optional[bool] = None
+    is_active: Optional[bool] = None
+
+
+class PaymentMethod(PaymentMethodBase):
+    id: int
+    user_id: int
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True

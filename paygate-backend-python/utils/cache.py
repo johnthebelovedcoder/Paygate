@@ -28,15 +28,41 @@ class Cache:
         return
 
     async def get(self, key: str) -> Optional[str]:
-        """Get a value from cache"""
+        """Get a value from the cache"""
         self._clean_expired(key)
         return self._cache.get(key)
 
-    async def set(self, key: str, value: str, expire: int = 3600) -> bool:
-        """Set a value in cache with expiration (in seconds)"""
+    async def set(self, key: str, value: str, expire: int = 300) -> bool:
+        """Set a value in the cache with optional expiration"""
         self._cache[key] = value
-        self._expirations[key] = time.time() + expire
+        if expire > 0:
+            self._expirations[key] = time.time() + expire
         return True
+
+    async def delete(self, key: str) -> bool:
+        """Delete a key from the cache"""
+        self._cache.pop(key, None)
+        self._expirations.pop(key, None)
+        return True
+
+    async def clear(self) -> bool:
+        """Clear all items from the cache"""
+        self._cache.clear()
+        self._expirations.clear()
+        return True
+
+    async def exists(self, key: str) -> bool:
+        """Check if a key exists in the cache"""
+        self._clean_expired(key)
+        return key in self._cache
+
+    async def ttl(self, key: str) -> int:
+        """Get the TTL for a key in seconds"""
+        if key not in self._expirations:
+            return -2  # Key doesn't exist or has no TTL
+        if self._is_expired(key):
+            return -1  # Key exists but has expired
+        return int(self._expirations[key] - time.time())
 
     async def delete(self, key: str) -> bool:
         """Delete a key from cache"""

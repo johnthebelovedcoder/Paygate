@@ -10,3 +10,6 @@ from .billing_service import *
 from .notification_service import *
 from .support_service import *
 from .marketing_service import *
+
+# Include the new function in the module exports
+from .analytics_service import trigger_realtime_analytics_update

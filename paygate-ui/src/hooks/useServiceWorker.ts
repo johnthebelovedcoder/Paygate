@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-interface ServiceWorkerRegistration {
+interface ServiceWorkerStatus {
   isSupported: boolean;
   isRegistered: boolean;
   registration?: ServiceWorkerRegistration;
@@ -11,14 +11,15 @@ interface ServiceWorkerRegistration {
  * Hook to register and manage service worker
  * @returns Service worker registration status
  */
-export const useServiceWorker = (): ServiceWorkerRegistration => {
-  const [registrationStatus, setRegistrationStatus] = useState<ServiceWorkerRegistration>({
+export const useServiceWorker = (): ServiceWorkerStatus => {
+  const [registrationStatus, setRegistrationStatus] = useState<ServiceWorkerStatus>({
     isSupported: 'serviceWorker' in navigator,
     isRegistered: false,
   });
 
   useEffect(() => {
-    if (!registrationStatus.isSupported) {
+    // Only run in production
+    if (process.env.NODE_ENV !== 'production' || !registrationStatus.isSupported) {
       return;
     }
 
@@ -30,7 +31,7 @@ export const useServiceWorker = (): ServiceWorkerRegistration => {
         setRegistrationStatus({
           isSupported: true,
           isRegistered: true,
-          registration,
+          registration: registration as unknown as ServiceWorkerRegistration,
         });
       } catch (error) {
         console.error('Service Worker registration failed:', error);

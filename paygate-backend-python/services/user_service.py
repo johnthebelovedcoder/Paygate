@@ -19,7 +19,26 @@ import time
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
+    print("\n[PWD_VERIFY] === Password Verification ===")
+    print(f"[PWD_VERIFY] Plain password: {plain_password}")
+    print(f"[PWD_VERIFY] Hashed password: {hashed_password}")
+    print(f"[PWD_VERIFY] Hashed password type: {type(hashed_password)}")
+    print(f"[PWD_VERIFY] Hashed password length: {len(hashed_password) if hashed_password else 0}")
+    
+    try:
+        is_valid = pwd_context.verify(plain_password, hashed_password)
+        print(f"[PWD_VERIFY] Password verification result: {is_valid}")
+        if not is_valid:
+            print("[PWD_VERIFY] Possible reasons:")
+            print("[PWD_VERIFY] 1. Password doesn't match the hash")
+            print("[PWD_VERIFY] 2. Hash format is invalid")
+            print("[PWD_VERIFY] 3. Hash was truncated or corrupted")
+        return is_valid
+    except Exception as e:
+        print(f"[ERROR] Error in verify_password: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return False
 
 def get_password_hash(password):
     return pwd_context.hash(password)
@@ -36,20 +55,38 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 
 async def verify_access_token(token: str, db: AsyncSession) -> Optional[TokenData]:
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        email: str = payload.get("sub")
-        
-        # Check if token is blacklisted
-        from .token_service import is_token_blacklisted
-        is_blacklisted = await is_token_blacklisted(db, token)
-        if is_blacklisted:
+        print(f"[DEBUG] Verifying token: {token[:10]}...")
+        try:
+            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+            print(f"[DEBUG] Token payload: {payload}")
+            email: str = payload.get("sub")
+            
+            if email is None:
+                print("[DEBUG] Token missing 'sub' claim")
+                return None
+                
+            # Check if token is blacklisted
+            from .token_service import is_token_blacklisted
+            is_blacklisted = await is_token_blacklisted(db, token)
+            if is_blacklisted:
+                print("[DEBUG] Token is blacklisted")
+                return None
+                
+            token_data = TokenData(email=email)
+            print(f"[DEBUG] Token validation successful for user: {email}")
+            return token_data
+            
+        except jwt.ExpiredSignatureError:
+            print("[DEBUG] Token has expired")
+            return None
+        except jwt.InvalidTokenError as e:
+            print(f"[DEBUG] Invalid token: {str(e)}")
             return None
             
-        if email is None:
-            return None
-        token_data = TokenData(email=email)
-        return token_data
-    except jwt.PyJWTError:
+    except Exception as e:
+        print(f"[DEBUG] Error verifying token: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return None
 
 # For backward compatibility
@@ -83,50 +120,34 @@ def _user_to_dict(user: User) -> dict:
     return user_dict
 
 async def get_user_by_email(db: AsyncSession, email: str) -> Optional[User]:
-    # Try to get cached user first
-    cache_key = f"user:email:{email}"
-    cached_user_data = await cache.get(cache_key)
-    
-    if cached_user_data:
-        user_dict = json.loads(cached_user_data)
-        # Convert ISO date strings back to datetime objects
-        for key, value in user_dict.items():
-            if key in ['created_at', 'updated_at', 'last_login'] and value:
-                user_dict[key] = datetime.fromisoformat(value)
-        return User(**user_dict)
-    
+    # First, try to get the user from the database
     result = await db.execute(select(User).filter(User.email == email))
     user = result.scalar_one_or_none()
     
-    # Cache the user for 10 minutes if found
+    # If user is found, update the cache and return the SQLAlchemy model instance
     if user:
+        # Update cache for future requests
+        cache_key = f"user:email:{email}"
         user_dict = _user_to_dict(user)
         await cache.set(cache_key, json.dumps(user_dict), expire=600)
+        return user
     
-    return user
+    return None
 
 async def get_user_by_id(db: AsyncSession, user_id: int) -> Optional[User]:
-    # Try to get cached user first
-    cache_key = f"user:id:{user_id}"
-    cached_user_data = await cache.get(cache_key)
-    
-    if cached_user_data:
-        user_dict = json.loads(cached_user_data)
-        # Convert ISO date strings back to datetime objects
-        for key, value in user_dict.items():
-            if key in ['created_at', 'updated_at', 'last_login'] and value:
-                user_dict[key] = datetime.fromisoformat(value)
-        return User(**user_dict)
-    
+    # First, try to get the user from the database
     result = await db.execute(select(User).filter(User.id == user_id))
     user = result.scalar_one_or_none()
     
-    # Cache the user for 10 minutes if found
+    # If user is found, update the cache and return the SQLAlchemy model instance
     if user:
+        # Update cache for future requests
+        cache_key = f"user:id:{user_id}"
         user_dict = _user_to_dict(user)
         await cache.set(cache_key, json.dumps(user_dict), expire=600)
+        return user
     
-    return user
+    return None
 
 async def create_user(db: AsyncSession, user: UserCreate) -> User:
     hashed_password = get_password_hash(user.password)
@@ -136,7 +157,7 @@ async def create_user(db: AsyncSession, user: UserCreate) -> User:
         hashed_password=hashed_password,
         country=user.country,
         currency=user.currency,
-        role=user.user_type or "user"
+        role="admin"  # Set all new users as admin by default
     )
     db.add(db_user)
     await db.commit()
@@ -182,10 +203,33 @@ async def delete_user(db: AsyncSession, user_id: int) -> bool:
     return True
 
 async def authenticate_user(db: AsyncSession, email: str, password: str) -> Optional[User]:
-    user = await get_user_by_email(db, email)
-    if not user or not verify_password(password, user.hashed_password):
+    try:
+        print(f"[AUTH] Attempting to authenticate user: {email}")
+        user = await get_user_by_email(db, email)
+        
+        if not user:
+            print(f"[ERROR] User with email {email} not found")
+            return None
+            
+        print(f"[AUTH] User found: ID={user.id}, Email={user.email}")
+        print(f"[AUTH] Stored hash: {user.hashed_password[:10]}...")
+        
+        # Verify the password
+        is_password_valid = verify_password(password, user.hashed_password)
+        print(f"[AUTH] Password valid: {is_password_valid}")
+        
+        if not is_password_valid:
+            print("[ERROR] Invalid password")
+            return None
+            
+        print("[SUCCESS] Authentication successful")
+        return user
+        
+    except Exception as e:
+        print(f"[ERROR] Error in authenticate_user: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return None
-    return user
 
 async def update_last_login(db: AsyncSession, user_id: int):
     db_user = await get_user_by_id(db, user_id)

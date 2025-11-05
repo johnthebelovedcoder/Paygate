@@ -1,375 +1,162 @@
-// components/AnalyticsChart.tsx - Enhanced analytics chart with ApexCharts
 import React from 'react';
 import Chart from 'react-apexcharts';
-import type { ApexOptions } from 'apexcharts';
-
-interface ChartData {
-  name: string;
-  value: number;
-  // For multi-series data - allow additional numeric properties
-  [key: string]: string | number;
-}
 
 interface AnalyticsChartProps {
-  data: ChartData[];
+  data: any[];
   title: string;
-  type?: 'line' | 'bar' | 'area' | 'pie' | 'scatter' | 'radar' | 'composed' | 'radial';
+  type: 'line' | 'bar' | 'pie' | 'donut' | 'area';
   color?: string;
-  multiSeries?: boolean;
-  seriesKeys?: string[];
-  currency?: string; // Add currency prop
+  currency?: string;
+  height?: number;
 }
 
 const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
   data,
   title,
-  type = 'line',
+  type,
   color = 'indigo',
-  multiSeries = false,
-  seriesKeys = [],
-  currency = 'USD', // Default to USD
+  currency = 'USD',
+  height = 350
 }) => {
-  // Color configurations
-  const colorConfig: Record<string, { primary: string; secondary: string; gradient: string[] }> = {
-    indigo: {
-      primary: '#4f46e5',
-      secondary: '#818cf8',
-      gradient: ['#4f46e5', '#6366f1', '#818cf8'],
-    },
-    green: {
-      primary: '#16a34a',
-      secondary: '#4ade80',
-      gradient: ['#16a34a', '#22c55e', '#4ade80'],
-    },
-    blue: {
-      primary: '#2563eb',
-      secondary: '#60a5fa',
-      gradient: ['#2563eb', '#3b82f6', '#60a5fa'],
-    },
-    purple: {
-      primary: '#9333ea',
-      secondary: '#a855f7',
-      gradient: ['#9333ea', '#a855f7', '#c084fc'],
-    },
-    yellow: {
-      primary: '#ca8a04',
-      secondary: '#eab308',
-      gradient: ['#ca8a04', '#eab308', '#facc15'],
-    },
-    red: {
-      primary: '#dc2626',
-      secondary: '#f87171',
-      gradient: ['#dc2626', '#ef4444', '#f87171'],
-    },
+  // Determine color based on the color prop
+  const getColor = () => {
+    switch(color) {
+      case 'indigo':
+        return ['#6366f1'];
+      case 'green':
+        return ['#10b981'];
+      case 'blue':
+        return ['#3b82f6'];
+      case 'purple':
+        return ['#8b5cf6'];
+      case 'red':
+        return ['#ef4444'];
+      case 'yellow':
+        return ['#f59e0b'];
+      default:
+        return ['#6366f1'];
+    }
   };
 
-  const colors = colorConfig[color] ||
-    colorConfig.indigo || { primary: '#6366f1', gradient: ['#6366f1', '#8b5cf6'] };
-
-  // Prepare chart options
-  const getChartOptions = (): ApexOptions => {
-    // Handle empty data
-    const chartData = data && data.length > 0 ? data : [{ name: 'No Data', value: 0 }];
-
-    const baseOptions: ApexOptions = {
+  // Define chart options based on type
+  const getChartOptions = () => {
+    const baseOptions = {
       chart: {
-        type: 'line',
+        id: title.toLowerCase().replace(/\s+/g, '-'),
         toolbar: {
-          show: true,
-          tools: {
-            download: true,
-            selection: true,
-            zoom: true,
-            zoomin: true,
-            zoomout: true,
-            pan: true,
-            reset: true,
-          },
+          show: false
         },
-        background: 'transparent',
-      },
-      title: {
-        text: title,
-        style: {
-          fontSize: '16px',
-          fontWeight: '600',
-          color: '#1f2937',
-        },
-      },
-      theme: {
-        mode: 'light',
-      },
-      tooltip: {
-        theme: 'light',
-        y: {
-          formatter: value => {
-            // Handle undefined or null values
-            if (value == null || isNaN(value)) return '0';
-            // Format as currency using the provided currency
-            return new Intl.NumberFormat('en-US', {
-              style: 'currency',
-              currency: currency,
-              minimumFractionDigits: 0,
-              maximumFractionDigits: 0,
-            }).format(value);
-          },
-        },
-      },
-      legend: {
-        position: 'top',
-        horizontalAlign: 'right',
+        animations: {
+          enabled: true,
+          easing: 'easeinout',
+          speed: 800
+        }
       },
       dataLabels: {
-        enabled: false,
+        enabled: false
       },
       stroke: {
-        curve: 'smooth',
-        width: 2,
+        curve: 'smooth' as const,
+        width: 3
       },
       grid: {
-        borderColor: '#e5e7eb',
-        strokeDashArray: 3,
+        yaxis: {
+          lines: {
+            offsetX: -30
+          }
+        },
+        padding: {
+          right: 30,
+          left: 10
+        }
       },
-      xaxis: {
-        categories: chartData.map(item => item.name),
-        labels: {
-          style: {
-            colors: '#6b7280',
-          },
-        },
-        axisBorder: {
-          color: '#e5e7eb',
-        },
-        axisTicks: {
-          color: '#e5e7eb',
-        },
+      theme: {
+        palette: 'palette4'
       },
-      yaxis: {
-        labels: {
-          style: {
-            colors: '#6b7280',
-          },
-          formatter: value => {
-            // Handle undefined or null values
-            if (value == null || isNaN(value)) return '0';
-            return new Intl.NumberFormat('en-US', {
-              style: 'currency',
-              currency: currency,
-              minimumFractionDigits: 0,
-              maximumFractionDigits: 0,
-            }).format(value);
-          },
-        },
-      },
+      tooltip: {
+        enabled: true,
+        y: {
+          formatter: function(value: number) {
+            if (currency) {
+              return `${currency}${value.toFixed(2)}`;
+            }
+            return `${value}`;
+          }
+        }
+      }
     };
 
-    // Override options based on chart type
-    switch (type) {
-      case 'bar':
-        return {
-          ...baseOptions,
-          chart: {
-            ...baseOptions.chart,
-            type: 'bar',
-          },
-          plotOptions: {
-            bar: {
-              horizontal: false,
-              columnWidth: '55%',
-              borderRadius: 4,
-            },
-          },
-          colors: multiSeries && seriesKeys.length > 0 ? colors.gradient : [colors.primary],
-        };
-
-      case 'area':
-        return {
-          ...baseOptions,
-          chart: {
-            ...baseOptions.chart,
-            type: 'area',
-          },
-          colors: multiSeries && seriesKeys.length > 0 ? colors.gradient : [colors.primary],
-          fill: {
-            type: 'gradient',
-            gradient: {
-              shadeIntensity: 1,
-              opacityFrom: 0.7,
-              opacityTo: 0.3,
-              stops: [0, 90, 100],
-            },
-          },
-        };
-
-      case 'pie':
-        return {
-          ...baseOptions,
-          chart: {
-            ...baseOptions.chart,
-            type: 'pie',
-          },
-          labels: data.map(item => item.name),
-          colors: colors.gradient,
-          legend: {
-            ...baseOptions.legend,
-            position: 'bottom',
-          },
-          tooltip: {
-            ...baseOptions.tooltip,
-            y: {
-              formatter: value => `${value.toLocaleString()}`,
-            },
-          },
-        };
-
-      case 'scatter':
-        return {
-          ...baseOptions,
-          chart: {
-            ...baseOptions.chart,
-            type: 'scatter',
-          },
-          colors: [colors.primary],
-          markers: {
-            size: 6,
-          },
-        };
-
-      case 'radar':
-        return {
-          ...baseOptions,
-          chart: {
-            ...baseOptions.chart,
-            type: 'radar',
-          },
-          colors: [colors.primary],
-          fill: {
-            opacity: 0.3,
-          },
-          markers: {
-            size: 0,
-          },
-          xaxis: {
-            categories: data.map(item => item.name),
-          },
-        };
-
-      case 'radial':
-        return {
-          ...baseOptions,
-          chart: {
-            ...baseOptions.chart,
-            type: 'radialBar',
-          },
-          colors: colors.gradient,
-          plotOptions: {
-            radialBar: {
-              dataLabels: {
-                name: {
-                  fontSize: '22px',
-                },
-                value: {
-                  fontSize: '16px',
-                },
-                total: {
-                  show: true,
-                  label: 'Total',
-                  formatter: w => {
-                    const total = w.globals.seriesTotals.reduce((a: number, b: number) => a + b, 0);
-                    return `${total.toLocaleString()}`;
-                  },
-                },
-              },
-            },
-          },
-          labels: data.map(item => item.name),
-        };
-
-      case 'line':
-      default:
-        return {
-          ...baseOptions,
-          chart: {
-            ...baseOptions.chart,
-            type: 'line',
-          },
-          colors: multiSeries && seriesKeys.length > 0 ? colors.gradient : [colors.primary],
-          markers: {
-            size: 4,
-            colors: multiSeries && seriesKeys.length > 0 ? colors.gradient : [colors.primary],
-            strokeColors: '#fff',
-            strokeWidth: 2,
-          },
-        };
-    }
-  };
-
-  // Prepare series data
-  const getSeriesData = (): ApexAxisChartSeries | ApexNonAxisChartSeries => {
-    // Handle empty data
-    const chartData = data && data.length > 0 ? data : [{ name: 'No Data', value: 0 }];
-
-    switch (type) {
-      case 'pie':
-      case 'radial':
-        return chartData.map(item => {
-          // Handle undefined or null values
-          const value = item.value != null ? item.value : 0;
-          return isNaN(value) ? 0 : value;
-        });
-
-      case 'radar':
-        return [
-          {
-            name: title,
-            data: chartData.map(item => {
-              // Handle undefined or null values
-              const value = item.value != null ? item.value : 0;
-              return isNaN(value) ? 0 : value;
-            }),
-          },
-        ];
-
-      default:
-        if (multiSeries && seriesKeys.length > 0) {
-          return seriesKeys.map(key => ({
-            name: key,
-            data: chartData.map(item => {
-              // Handle undefined or null values
-              const value = item[key] != null ? item[key] : 0;
-              const numValue = typeof value === 'number' ? value : Number(value);
-              return isNaN(numValue) ? 0 : numValue;
-            }),
-          }));
-        } else {
-          return [
-            {
-              name: title,
-              data: chartData.map(item => {
-                // Handle undefined or null values
-                const value = item.value != null ? item.value : 0;
-                const numValue = typeof value === 'number' ? value : Number(value);
-                return isNaN(numValue) ? 0 : numValue;
-              }),
-            },
-          ];
+    if (type === 'pie' || type === 'donut') {
+      return {
+        ...baseOptions,
+        chart: {
+          ...baseOptions.chart,
+          type: 'donut'
+        },
+        labels: data.map((item: any) => item.name || `Item ${data.indexOf(item) + 1}`),
+        legend: {
+          position: 'bottom' as const
         }
+      };
+    } else if (type === 'bar') {
+      return {
+        ...baseOptions,
+        chart: {
+          ...baseOptions.chart,
+          type: 'bar'
+        },
+        xaxis: {
+          categories: data.map((item: any) => item.name || `Item ${data.indexOf(item) + 1}`)
+        },
+        plotOptions: {
+          bar: {
+            horizontal: false,
+            columnWidth: '70%',
+            endingShape: 'rounded'
+          }
+        },
+        colors: getColor()
+      };
+    } else if (type === 'line' || type === 'area') {
+      return {
+        ...baseOptions,
+        chart: {
+          ...baseOptions.chart,
+          type: type === 'area' ? 'area' : 'line'
+        },
+        xaxis: {
+          categories: data.map((item: any) => item.name || `Item ${data.indexOf(item) + 1}`)
+        },
+        colors: getColor()
+      };
+    } else {
+      return baseOptions;
     }
   };
 
-  const chartOptions = getChartOptions();
-  const seriesData = getSeriesData();
+  // Define series based on chart type
+  const getSeries = () => {
+    if (type === 'pie' || type === 'donut') {
+      return data.map((item: any) => item.value || item);
+    } else {
+      return [{
+        name: title,
+        data: data.map((item: any) => item.value || item)
+      }];
+    }
+  };
+
+  // Determine chart type
+  const chartType = (type === 'pie' || type === 'donut') ? 'donut' : type;
 
   return (
-    <div className="bg-white shadow rounded-lg p-4 sm:p-6 dark:bg-gray-800 dark:shadow-gray-900/50">
-      <div className="h-64 sm:h-80">
-        <Chart
-          options={chartOptions}
-          series={seriesData}
-          type={chartOptions.chart?.type}
-          height="100%"
-        />
-      </div>
+    <div className="w-full">
+      <Chart
+        options={getChartOptions()}
+        series={getSeries()}
+        type={chartType}
+        height={height}
+      />
     </div>
   );
 };

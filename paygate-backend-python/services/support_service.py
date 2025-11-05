@@ -91,3 +91,75 @@ async def create_ticket_response(db: AsyncSession, response: SupportTicketRespon
     await db.commit()
     await db.refresh(db_response)
     return db_response
+
+
+# Support Statistics Services
+async def get_support_statistics(db: AsyncSession) -> dict:
+    """Get overall support statistics for admin users"""
+    # Total tickets
+    total_result = await db.execute(select(SupportTicket))
+    total_tickets = len(total_result.scalars().all())
+    
+    # Open tickets
+    open_result = await db.execute(select(SupportTicket).filter(SupportTicket.status == "open"))
+    open_tickets = len(open_result.scalars().all())
+    
+    # Closed tickets
+    closed_result = await db.execute(select(SupportTicket).filter(SupportTicket.status.in_(["resolved", "closed"])))
+    closed_tickets = len(closed_result.scalars().all())
+    
+    # Average response time (simplified calculation)
+    # Note: A more sophisticated implementation would track first response time
+    average_response_time = 0  # Placeholder
+    
+    # Satisfaction rating (placeholder - would come from ticket feedback)
+    satisfaction_rating = 0  # Placeholder
+    
+    return {
+        "total_tickets": total_tickets,
+        "open_tickets": open_tickets,
+        "closed_tickets": closed_tickets,
+        "average_response_time": average_response_time,
+        "satisfaction_rating": satisfaction_rating
+    }
+
+
+async def get_user_support_statistics(db: AsyncSession, user_id: int) -> dict:
+    """Get support statistics for a specific user"""
+    # Total tickets for user
+    total_result = await db.execute(
+        select(SupportTicket).filter(SupportTicket.user_id == user_id)
+    )
+    total_tickets = len(total_result.scalars().all())
+    
+    # Open tickets for user
+    open_result = await db.execute(
+        select(SupportTicket).filter(
+            SupportTicket.user_id == user_id,
+            SupportTicket.status == "open"
+        )
+    )
+    open_tickets = len(open_result.scalars().all())
+    
+    # Closed tickets for user
+    closed_result = await db.execute(
+        select(SupportTicket).filter(
+            SupportTicket.user_id == user_id,
+            SupportTicket.status.in_(["resolved", "closed"])
+        )
+    )
+    closed_tickets = len(closed_result.scalars().all())
+    
+    # Average response time (placeholder)
+    average_response_time = 0
+    
+    # Satisfaction rating (placeholder)
+    satisfaction_rating = 0
+    
+    return {
+        "total_tickets": total_tickets,
+        "open_tickets": open_tickets,
+        "closed_tickets": closed_tickets,
+        "average_response_time": average_response_time,
+        "satisfaction_rating": satisfaction_rating
+    }

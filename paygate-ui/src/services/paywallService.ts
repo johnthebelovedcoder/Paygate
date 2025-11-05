@@ -15,31 +15,17 @@ const CACHE_DURATION = 30000; // 30 seconds cache - increased for better perform
 export interface CreatePaywallData {
   title: string;
   description?: string;
-  price?: number; // Make optional as it's conditional based on pricingModel
-  monthlyPrice?: number; // New field for subscription
-  annualPrice?: number; // New field for subscription
-  minimumAmount?: number; // New field for pay-what-you-want
-  currency?: string;
-  thumbnailUrl?: string;
-  type: 'file' | 'url' | 'content' | 'content_package' | 'document' | 'video' | 'image' | 'paywall';
-  contentId?: string;
+  price: number; // Required field for the backend
+  currency?: string; // Optional, defaults to USD on backend
+  type?: 'file' | 'url' | 'content' | 'content_package' | 'document' | 'video' | 'image' | 'paywall';
+  content_ids?: number[]; // List of content IDs - defaults to [] on backend
   url?: string;
-  tags?: string[];
-  status?: 'draft' | 'published' | 'archived';
-  previewEnabled?: boolean;
-  previewSettings?: { style: string };
-  socialShareEnabled?: boolean;
-  fileSize?: string;
-  pricingModel: 'one-time' | 'subscription' | 'pay-what-you-want'; // New field
-  downloadLimit?: number; // New field
-  accessDuration?: number; // New field
-  customerLimit?: number; // New field
-  buttonText?: string; // New field
-  brandColor?: string; // New field
-  creatorName?: string; // New field
-  creatorPhoto?: string; // New field
-  testimonial?: string; // New field
-  guarantee?: string; // New field
+  status?: 'draft' | 'active' | 'inactive' | 'archived'; // Optional, defaults to draft on backend
+  success_redirect_url?: string; // Match backend field names
+  cancel_redirect_url?: string;
+  webhook_url?: string;
+  duration?: number; // Duration in days
+  // Note: owner_id is set by the backend based on current user, so don't send it
 }
 
 // Update Paywall interface to match backend response more closely
@@ -100,11 +86,23 @@ class PaywallService {
 
       const response = await apiService.post<PaywallResponse>('/paywalls', data);
 
-      if (!response.data) {
+      // Due to the Axios interceptor, response is already the data part
+      // Response could be the created paywall object or an object with data field
+      if (!response) {
         throw new Error('No data returned from server');
       }
 
-      return response.data as Paywall;
+      // If response is a Paywall object (expected after creation)
+      if (typeof response === 'object' && 'id' in response) {
+        return response as Paywall;
+      } 
+      // If response is an object with data field
+      else if (typeof response === 'object' && 'data' in response) {
+        return response.data as Paywall;
+      } 
+      else {
+        throw new Error('Invalid response format from server');
+      }
     } catch (error: unknown) {
       console.error('Error creating paywall:', error);
 
@@ -129,13 +127,34 @@ class PaywallService {
         throw new Error('Server error. Please try again later.');
       }
 
-      const errorMessage =
-        isAxiosError(error) &&
-        error.response?.data &&
-        typeof error.response.data === 'object' &&
-        'message' in error.response.data
-          ? (error.response.data as { message?: string }).message || 'Failed to create paywall'
-          : 'Failed to create paywall';
+      let errorMessage = 'Failed to create paywall';
+      
+      if (isAxiosError(error) && error.response?.data) {
+        // Try to get detailed validation error information
+        const errorData = error.response.data;
+        
+        if (typeof errorData === 'object') {
+          // Check if it has validation error details (422 errors often return 'detail')
+          if ('detail' in errorData && Array.isArray(errorData.detail)) {
+            // FastAPI validation errors typically return as 'detail' array
+            const validationErrors = errorData.detail as Array<{loc: string[], msg: string, type: string}>;
+            const errorMessages = validationErrors.map(err => {
+              const field = err.loc[err.loc.length - 1]; // Get the field name (last element)
+              return `${field}: ${err.msg}`;
+            });
+            errorMessage = `Validation errors: ${errorMessages.join(', ')}`;
+          } else if ('message' in errorData) {
+            errorMessage = (errorData as { message?: string }).message || errorMessage;
+          } else {
+            // For other cases, just show the raw error data
+            errorMessage = JSON.stringify(errorData);
+          }
+        } else {
+          errorMessage = String(errorData);
+        }
+      }
+      
+      console.error('Detailed error response:', error.response?.data);
       throw new Error(errorMessage);
     }
   }
@@ -156,11 +175,22 @@ class PaywallService {
       try {
         const response = await apiService.get<PaywallResponse>('/paywalls');
 
-        if (!response.data) {
+        // Due to the Axios interceptor, response is already the data part
+        // So response could be an array of paywalls or a single paywall object
+        let paywalls: Paywall[];
+        
+        if (Array.isArray(response)) {
+          // If response is already an array (due to Axios interceptor)
+          paywalls = response as Paywall[];
+        } else if (response && typeof response === 'object' && 'data' in response) {
+          // If response is an object with data field (backend response format)
+          // This means Axios interceptor didn't extract the data, which might happen if there's an issue
+          paywalls = Array.isArray(response.data) ? response.data as Paywall[] : [response.data as Paywall];
+        } else {
+          // Unexpected response format
+          console.error('Unexpected response format:', response);
           throw new Error('No data returned from server');
         }
-
-        const paywalls = Array.isArray(response.data) ? response.data : [response.data as Paywall];
 
         // Update cache
         paywallsCache = paywalls;
@@ -200,11 +230,22 @@ class PaywallService {
       try {
         const response = await apiService.get<PaywallResponse>(`/paywalls/${id}`);
 
-        if (!response.data) {
+        // Due to the Axios interceptor, response could be the paywall object directly
+        if (!response) {
           throw new Error(`Paywall with ID ${id} not found`);
         }
 
-        return response.data as Paywall;
+        // If response is a Paywall object (expected for single paywall)
+        if (typeof response === 'object' && 'id' in response) {
+          return response as Paywall;
+        } 
+        // If response is an object with data field
+        else if (typeof response === 'object' && 'data' in response) {
+          return response.data as Paywall;
+        } 
+        else {
+          throw new Error(`Paywall with ID ${id} not found`);
+        }
       } catch (error: unknown) {
         console.error(`Error fetching paywall ${id}:`, error);
 
@@ -243,11 +284,22 @@ class PaywallService {
     try {
       const response = await apiService.put<PaywallResponse>(`/paywalls/${id}`, data);
 
-      if (!response.data) {
+      // Due to the Axios interceptor, response is already the data part
+      if (!response) {
         throw new Error('No data returned from server');
       }
 
-      return response.data as Paywall;
+      // If response is a Paywall object (expected after update)
+      if (typeof response === 'object' && 'id' in response) {
+        return response as Paywall;
+      } 
+      // If response is an object with data field
+      else if (typeof response === 'object' && 'data' in response) {
+        return response.data as Paywall;
+      } 
+      else {
+        throw new Error('Invalid response format from server');
+      }
     } catch (error: unknown) {
       console.error(`Error updating paywall ${id}:`, error);
 
@@ -333,7 +385,23 @@ class PaywallService {
 
         const response = await apiService.get<PaywallResponse>(endpoint);
         console.log('Customer paywall response:', response);
-        return response.data as Paywall;
+        
+        // Due to the Axios interceptor, response could be the paywall object directly
+        if (!response) {
+          throw new Error('No data returned from server');
+        }
+
+        // If response is a Paywall object (expected for single paywall)
+        if (typeof response === 'object' && 'id' in response) {
+          return response as Paywall;
+        } 
+        // If response is an object with data field
+        else if (typeof response === 'object' && 'data' in response) {
+          return response.data as Paywall;
+        } 
+        else {
+          throw new Error('No data returned from server');
+        }
       } catch (error: unknown) {
         console.error('Error fetching customer paywall:', error);
         if (isAxiosError(error) && error.response?.status === 429) {

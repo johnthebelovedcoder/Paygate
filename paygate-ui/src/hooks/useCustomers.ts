@@ -19,7 +19,7 @@ const useCustomers = (): UseCustomersReturn => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, authInitialized } = useAuth();
 
   const fetchCustomers = async (forceRefresh = false) => {
     try {
@@ -56,14 +56,17 @@ const useCustomers = (): UseCustomersReturn => {
   };
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (authInitialized && isAuthenticated) {
       fetchCustomers();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, authInitialized]);
+
+  // Return loading state while auth is initializing
+  const effectiveLoading = authInitialized ? loading : true;
 
   return {
     customers,
-    loading,
+    loading: effectiveLoading,
     error,
     refreshCustomers: () => fetchCustomers(true),
   };

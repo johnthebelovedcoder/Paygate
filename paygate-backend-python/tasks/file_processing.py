@@ -4,7 +4,7 @@ from pathlib import Path
 from PIL import Image
 import fitz  # PyMuPDF for PDF processing
 from celery import current_task
-from .celery_worker import celery_app
+from celery_worker import celery_app
 import logging
 from typing import Dict, Any
 

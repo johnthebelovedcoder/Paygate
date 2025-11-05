@@ -91,4 +91,23 @@ class BillingInfo(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
+    user = relationship("User") 
+ 
+class PaymentMethod(Base): 
+    __tablename__ = "payment_methods" 
+    id = Column(Integer, primary_key=True, index=True) 
+    user_id = Column(Integer, ForeignKey("users.id"), index=True) 
+    type = Column(String, nullable=False)  # "card", "bank", "wallet", etc. 
+    provider = Column(String, nullable=False)  # "stripe", "paystack", "paypal", etc. 
+    provider_customer_id = Column(String, index=True)  # Customer ID in the payment provider 
+    provider_payment_method_id = Column(String, index=True)  # Payment method ID in the provider 
+    brand = Column(String, nullable=True)  # Card brand (Visa, Mastercard, etc.) 
+    last4 = Column(String, nullable=True)  # Last 4 digits of card 
+    expiry_month = Column(Integer, nullable=True)  # Expiry month for cards 
+    expiry_year = Column(Integer, nullable=True)  # Expiry year for cards 
+    is_default = Column(Boolean, default=False)  # Whether this is the default payment method 
+    is_active = Column(Boolean, default=True, index=True)  # Whether the payment method is active 
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True) 
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now_()) 
+ 
     user = relationship("User")

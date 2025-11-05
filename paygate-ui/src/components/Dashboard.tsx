@@ -26,6 +26,19 @@ const Dashboard: React.FC = () => {
   const [filteredRevenueData, setFilteredRevenueData] = useState<{ name: string; value: number }[]>(
     []
   );
+  const [timeoutError, setTimeoutError] = useState<string | null>(null);
+
+  // Add timeout fallback to prevent infinite loading
+  useEffect(() => {
+    if (loading) {
+      const timeout = setTimeout(() => {
+        console.warn('Dashboard data loading timeout - forcing to show with fallback data');
+        setTimeoutError('Data is taking longer than expected to load. Showing fallback data.');
+      }, 10000); // 10 seconds timeout
+
+      return () => clearTimeout(timeout);
+    }
+  }, [loading]);
 
   // Format stats data for display
   const formatCurrency = (value: number): string => {
@@ -88,7 +101,7 @@ const Dashboard: React.FC = () => {
     </Link>
   );
 
-  if (loading) {
+  if (loading && !timeoutError) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <Header
@@ -109,7 +122,7 @@ const Dashboard: React.FC = () => {
     );
   }
 
-  if (error) {
+  if (error && !timeoutError) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <Header
@@ -128,6 +141,9 @@ const Dashboard: React.FC = () => {
     );
   }
 
+  // If we have timeout error, we'll render the dashboard anyway with fallback data
+  // The timeout error can be displayed as a notification to the user
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Header
@@ -138,6 +154,24 @@ const Dashboard: React.FC = () => {
       <main>
         <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
           <div className="px-4 py-6 sm:px-0">
+            {/* Show timeout warning if data is taking too long */}
+            {timeoutError && (
+              <div className="mb-6 bg-yellow-50 border border-yellow-100 rounded-lg p-4 dark:bg-yellow-900/20 dark:border-yellow-900">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">Data Loading Issue</h3>
+                    <div className="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
+                      <p>{timeoutError}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             {/* Stats Cards */}
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
               <StatsCard

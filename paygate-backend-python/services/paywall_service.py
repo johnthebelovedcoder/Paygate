@@ -59,27 +59,76 @@ async def get_all_paywalls(db: AsyncSession, pagination: PaginationParams) -> Tu
     return items, total_count
 
 
-async def create_paywall(db: AsyncSession, paywall: PaywallCreate) -> Paywall:
-    # Convert content_ids to JSON string
-    content_ids_json = json.dumps(paywall.content_ids) if paywall.content_ids else "[]"
-    
-    db_paywall = Paywall(
-        title=paywall.title,
-        description=paywall.description,
-        content_ids=content_ids_json,
-        price=paywall.price,
-        currency=paywall.currency,
-        duration=paywall.duration,
-        status=paywall.status,
-        success_redirect_url=paywall.success_redirect_url,
-        cancel_redirect_url=paywall.cancel_redirect_url,
-        webhook_url=paywall.webhook_url,
-        owner_id=paywall.owner_id
-    )
-    db.add(db_paywall)
-    await db.commit()
-    await db.refresh(db_paywall)
-    return db_paywall
+async def create_paywall(db: AsyncSession, paywall_data) -> Paywall:
+    try:
+        # Handle both dict and Pydantic model for content_ids
+        if isinstance(paywall_data, dict):
+            content_ids = paywall_data.get('content_ids', [])
+            download_limit = paywall_data.get('download_limit', 0)
+            expiration_days = paywall_data.get('expiration_days', 0)
+            customer_restrictions = paywall_data.get('customer_restrictions', [])
+        else:
+            content_ids = getattr(paywall_data, 'content_ids', [])
+            download_limit = getattr(paywall_data, 'download_limit', 0)
+            expiration_days = getattr(paywall_data, 'expiration_days', 0)
+            customer_restrictions = getattr(paywall_data, 'customer_restrictions', [])
+        
+        # Convert content_ids to JSON string, ensuring we always have a valid JSON array
+        try:
+            content_ids_json = json.dumps(content_ids) if content_ids is not None else "[]"
+        except (TypeError, ValueError) as e:
+            content_ids_json = "[]"  # Fallback to empty array
+            
+        # Convert customer_restrictions to JSON string
+        try:
+            customer_restrictions_json = json.dumps(customer_restrictions) if customer_restrictions is not None else "[]"
+        except (TypeError, ValueError) as e:
+            customer_restrictions_json = "[]"  # Fallback to empty array
+            
+        # Handle both dict and Pydantic model for all other fields
+        if isinstance(paywall_data, dict):
+            db_paywall = Paywall(
+                title=paywall_data.get('title', ''),
+                description=paywall_data.get('description'),
+                content_ids=content_ids_json,
+                price=paywall_data.get('price', 0.0),
+                currency=paywall_data.get('currency', 'USD'),
+                duration=paywall_data.get('duration'),
+                status=paywall_data.get('status', 'draft'),
+                success_redirect_url=paywall_data.get('success_redirect_url'),
+                cancel_redirect_url=paywall_data.get('cancel_redirect_url'),
+                webhook_url=paywall_data.get('webhook_url'),
+                download_limit=download_limit,
+                expiration_days=expiration_days,
+                customer_restrictions=customer_restrictions_json,
+                owner_id=paywall_data.get('owner_id')
+            )
+        else:
+            db_paywall = Paywall(
+                title=getattr(paywall_data, 'title', ''),
+                description=getattr(paywall_data, 'description', None),
+                content_ids=content_ids_json,
+                price=getattr(paywall_data, 'price', 0.0),
+                currency=getattr(paywall_data, 'currency', 'USD'),
+                duration=getattr(paywall_data, 'duration', None),
+                status=getattr(paywall_data, 'status', 'draft'),
+                success_redirect_url=getattr(paywall_data, 'success_redirect_url', None),
+                cancel_redirect_url=getattr(paywall_data, 'cancel_redirect_url', None),
+                webhook_url=getattr(paywall_data, 'webhook_url', None),
+                download_limit=getattr(paywall_data, 'download_limit', 0),
+                expiration_days=getattr(paywall_data, 'expiration_days', 0),
+                customer_restrictions=customer_restrictions_json,
+                owner_id=getattr(paywall_data, 'owner_id')
+            )
+        
+        db.add(db_paywall)
+        await db.commit()
+        await db.refresh(db_paywall)
+        return db_paywall
+    except Exception as e:
+        # Log the error for debugging
+        print(f"Error creating paywall: {str(e)}")
+        raise  # Re-raise the exception so it can be handled upstream
 
 
 async def update_paywall(db: AsyncSession, paywall_id: int, paywall_update: PaywallUpdate) -> Optional[Paywall]:
@@ -90,6 +139,8 @@ async def update_paywall(db: AsyncSession, paywall_id: int, paywall_update: Payw
     for field, value in paywall_update.dict(exclude_unset=True).items():
         if field == "content_ids":
             setattr(db_paywall, field, json.dumps(value) if value else "[]")
+        elif field == "customer_restrictions":
+            setattr(db_paywall, field, json.dumps(value) if value is not None else "[]")
         else:
             setattr(db_paywall, field, value)
     

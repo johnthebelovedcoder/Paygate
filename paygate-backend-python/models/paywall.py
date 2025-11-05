@@ -20,6 +20,12 @@ class Paywall(Base):
     views = Column(Integer, default=0, index=True)  # Added index
     conversions = Column(Integer, default=0, index=True)  # Added index
     owner_id = Column(Integer, ForeignKey("users.id"), index=True)  # Added index
+    
+    # Access settings fields
+    download_limit = Column(Integer, default=0)  # 0 means unlimited
+    expiration_days = Column(Integer, default=0)  # 0 means never expires
+    customer_restrictions = Column(Text, nullable=True)  # JSON string of email restrictions
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)  # Added index
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

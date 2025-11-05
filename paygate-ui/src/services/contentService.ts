@@ -174,7 +174,7 @@ export const uploadFile = async (file: File): Promise<FileUploadResponse> => {
     formData.append('file', file);
 
     // Use the raw axios instance for file uploads which require multipart/form-data
-    const response = await api.post('/upload', formData, {
+    const response = await api.post('/content/upload', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },

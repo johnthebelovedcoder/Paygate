@@ -11,9 +11,9 @@ interface AccessSettingsProps {
 const AccessSettings: React.FC<AccessSettingsProps> = ({ paywall, onClose }) => {
   const { paywalls } = useAppData();
   const [settings, setSettings] = useState({
-    downloadLimit: paywall.sales || 0, // Using sales as a placeholder
-    expirationDays: 30,
-    customerRestrictions: [] as string[],
+    downloadLimit: paywall.download_limit || 0,
+    expirationDays: paywall.expiration_days || 0,
+    customerRestrictions: paywall.customer_restrictions || [] as string[],
   });
   const [newRestriction, setNewRestriction] = useState('');
   const [loading, setLoading] = useState(false);
@@ -24,13 +24,11 @@ const AccessSettings: React.FC<AccessSettingsProps> = ({ paywall, onClose }) => 
     setError(null);
 
     try {
-      // In a real implementation, we would save these settings to the backend
-      // For now, we'll just simulate the save operation
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Update the paywall with new settings
+      // Update the paywall with access settings
       await paywallService.updatePaywall(paywall.id, {
-        ...paywall,
+        download_limit: settings.downloadLimit,
+        expiration_days: settings.expirationDays,
+        customer_restrictions: settings.customerRestrictions,
       });
 
       paywalls.refreshPaywalls();

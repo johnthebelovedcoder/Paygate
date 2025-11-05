@@ -1,6 +1,14 @@
 // paymentService.ts - Payment and transaction service
-import { apiService } from './api';
-import type { AxiosError } from 'axios';
+import type { AxiosError, AxiosInstance } from 'axios';
+
+// Define the API client interface
+export interface IApiClient {
+  get: <T>(url: string, config?: any) => Promise<T>;
+  post: <T>(url: string, data?: any, config?: any) => Promise<T>;
+  put: <T>(url: string, data?: any, config?: any) => Promise<T>;
+  delete: <T>(url: string, config?: any) => Promise<T>;
+  getAxiosInstance: () => AxiosInstance;
+}
 
 function isAxiosError(error: unknown): error is AxiosError {
   return (error as AxiosError).isAxiosError !== undefined;
@@ -64,108 +72,121 @@ export interface PaystackResponse {
 }
 
 class PaymentService {
+  private api: IApiClient;
+
+  constructor(apiClient: IApiClient) {
+    this.api = apiClient;
+  }
+
   // Create a new payment with Paystack
   async createPayment(data: CreatePaymentRequest): Promise<PaystackResponse> {
     try {
-      const response = await apiService.post<PaystackResponse>('/payments', data);
+      const response = await this.api.post<PaystackResponse>('/payments', data);
       return response;
-    } catch (error: unknown) {
-      console.error('Error creating payment:', error);
-      if (isAxiosError(error) && error.response?.data) {
-        throw error.response.data;
-      } else if (error instanceof Error) {
-        throw { message: error.message };
-      }
-      throw { message: 'Failed to create payment' };
+    } catch (error) {
+      const err = error as Error;
+      console.error('Error creating payment:', err);
+      throw err;
     }
   }
 
   // Get recent payments for the current user
   async getRecentPayments(limit: number = 5): Promise<Payment[]> {
     try {
-      const response = await apiService.get<Payment[]>(
-        `/payments?limit=${limit}&sort=createdAt:desc`
-      );
-      return Array.isArray(response) ? response : [];
-    } catch (error: unknown) {
-      console.error('Error fetching recent payments:', error);
-      if (isAxiosError(error) && error.response?.data) {
-        throw error.response.data;
-      } else if (error instanceof Error) {
-        throw { message: error.message };
-      }
-      throw { message: 'Failed to fetch recent payments' };
+      const response = await this.api.get<{ data: Payment[] }>(`/payments/recent?limit=${limit}`);
+      return response.data || [];
+    } catch (error) {
+      const err = error as Error;
+      console.error('Error fetching recent payments:', err);
+      throw err;
     }
+  }
+
+  // Get all payments
+  async getPayments(): Promise<{ data: Payment[] }> {
+    return this.api.get<{ data: Payment[] }>('/payments');
+  }
+
+  // Update a payment
+  async updatePayment(id: string, data: Partial<Payment>): Promise<{ data: Payment }> {
+    return this.api.put<{ data: Payment }>(`/payments/${id}`, data);
+  }
+
+  // Delete a payment
+  async deletePayment(id: string): Promise<void> {
+    return this.api.delete(`/payments/${id}`);
   }
 
   // Verify a payment with Paystack
   async verifyPayment(reference: string): Promise<{ payment: Payment; paystack_data: any }> {
     try {
-      const response = await apiService.get<{ payment: Payment; paystack_data: any }>(
-        `/payments/verify/${reference}`
-      );
-      return response;
-    } catch (error: unknown) {
-      console.error('Error verifying payment:', error);
-      if (isAxiosError(error) && error.response?.data) {
-        throw error.response.data;
-      } else if (error instanceof Error) {
-        throw { message: error.message };
-      }
-      throw { message: 'Failed to verify payment' };
+      const response = await this.api.get<{ data: { payment: Payment; paystack_data: any } }>(`/payments/verify/${reference}`);
+      return response.data;
+    } catch (error) {
+      const err = error as Error;
+      console.error('Error verifying payment:', err);
+      throw err;
     }
   }
 
   // Get payment details
   async getPayment(reference: string): Promise<Payment> {
     try {
-      const response = await apiService.get<Payment>(`/payments/${reference}`);
-      return response;
-    } catch (error: unknown) {
-      console.error('Error fetching payment:', error);
-      if (isAxiosError(error) && error.response?.data) {
-        throw error.response.data;
-      } else if (error instanceof Error) {
-        throw { message: error.message };
-      }
-      throw { message: 'Failed to fetch payment' };
+      const response = await this.api.get<{ data: Payment }>(`/payments/${reference}`);
+      return response.data;
+    } catch (error) {
+      const err = error as Error;
+      console.error('Error fetching payment:', err);
+      throw err;
     }
   }
 
   // Initialize Paystack payment
-  async initializePayment(
-    amount: number,
-    email: string,
-    reference: string,
-    currency: string = 'NGN'
-  ): Promise<PaystackResponse> {
+  async initializePayment(amount: number, email: string, reference: string, currency: string = 'NGN'): Promise<PaystackResponse> {
     try {
-      const data = {
+      const response = await this.api.post<PaystackResponse>('/payments/initialize', {
         amount,
         email,
         reference,
         currency,
-      };
-
-      const response = await apiService.post<PaystackResponse>('/payments', data);
+      });
       return response;
-    } catch (error: unknown) {
-      console.error('Error initializing payment:', error);
-      if (isAxiosError(error) && error.response?.data) {
-        throw error.response.data;
-      } else if (error instanceof Error) {
-        throw { message: error.message };
-      }
-      throw { message: 'Failed to initialize payment' };
+    } catch (error) {
+      const err = error as Error;
+      console.error('Error initializing payment:', err);
+      throw err;
     }
   }
 
   // Process payment webhook
   async processWebhook(payload: any, signature: string): Promise<void> {
-    // This would typically be called server-side, so we'll make a mock implementation
-    console.log('Processing payment webhook:', payload, signature);
+    try {
+      await this.api.post(
+        '/payments/webhook',
+        { payload },
+        {
+          headers: {
+            'x-paystack-signature': signature,
+          },
+        }
+      );
+    } catch (error) {
+      const err = error as Error;
+      console.error('Error processing webhook:', err);
+      throw err;
+    }
   }
 }
 
-const paymentService = new PaymentService();
-export default paymentService;
+// Create a default instance for backward compatibility
+import { apiService } from './api';
+const defaultPaymentService = new PaymentService({
+  get: apiService.get,
+  post: apiService.post,
+  put: apiService.put,
+  delete: apiService.delete,
+  getAxiosInstance: () => apiService.getAxiosInstance(),
+});
+
+export { PaymentService };
+export default defaultPaymentService;

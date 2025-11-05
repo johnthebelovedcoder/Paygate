@@ -603,7 +603,24 @@ const Signup: React.FC = () => {
                 <div>
                   <button
                     type="submit"
-                    className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    disabled={
+                      !name.trim() || 
+                      !email.trim() || 
+                      !password || 
+                      !confirmPassword || 
+                      validatePassword(password) !== '' || 
+                      validatePasswordMatch(password, confirmPassword) !== ''
+                    }
+                    className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${
+                      !name.trim() || 
+                      !email.trim() || 
+                      !password || 
+                      !confirmPassword || 
+                      validatePassword(password) !== '' || 
+                      validatePasswordMatch(password, confirmPassword) !== '' 
+                        ? 'bg-indigo-400 cursor-not-allowed' 
+                        : 'bg-indigo-600 hover:bg-indigo-700'
+                    }`}
                   >
                     Continue
                   </button>
@@ -802,9 +819,11 @@ const Signup: React.FC = () => {
                 <div>
                   <button
                     type="submit"
-                    disabled={loading}
+                    disabled={loading || !country || !currency || contentTypes.length === 0}
                     className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${
-                      loading ? 'bg-indigo-400' : 'bg-indigo-600 hover:bg-indigo-700'
+                      loading || !country || !currency || contentTypes.length === 0
+                        ? 'bg-indigo-400 cursor-not-allowed'
+                        : 'bg-indigo-600 hover:bg-indigo-700'
                     }`}
                   >
                     {loading ? (

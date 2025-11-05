@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, Float, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, Boolean, Float, ForeignKey, Text, DateTime, func
 from sqlalchemy.orm import relationship
 from config.database import Base
 
@@ -17,5 +17,7 @@ class Content(Base):
     paywall_title = Column(String, nullable=True)
     paywall_description = Column(Text, nullable=True)
     owner_id = Column(Integer, ForeignKey("users.id"), index=True)  # Added index
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), index=True)
 
     owner = relationship("User")

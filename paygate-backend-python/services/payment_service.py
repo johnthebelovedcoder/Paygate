@@ -66,6 +66,23 @@ async def create_payment(db: AsyncSession, payment: PaymentCreate) -> Payment:
     }
     send_payment_confirmation_email.delay(payment.customer_email, payment_details)
     
+    # Trigger real-time analytics event for new payment
+    try:
+        from .analytics_service import trigger_realtime_analytics_update
+        analytics_data = {
+            "payment_id": db_payment.id,
+            "amount": payment.amount,
+            "currency": payment.currency,
+            "paywall_id": payment.paywall_id,
+            "customer_email": payment.customer_email,
+            "status": payment.status
+        }
+        await trigger_realtime_analytics_update("new_sale", analytics_data, payment.owner_id)
+    except Exception as e:
+        # Log error but don't fail the payment creation if analytics broadcast fails
+        import logging
+        logging.error(f"Failed to broadcast analytics event: {str(e)}")
+    
     return db_payment
 
 
@@ -74,6 +91,7 @@ async def update_payment_status(db: AsyncSession, reference: str, status: str, g
     if not db_payment:
         return None
     
+    old_status = db_payment.status
     db_payment.status = status
     if gateway_response:
         db_payment.gateway_response = gateway_response
@@ -81,6 +99,26 @@ async def update_payment_status(db: AsyncSession, reference: str, status: str, g
     db_payment.updated_at = datetime.utcnow()
     await db.commit()
     await db.refresh(db_payment)
+    
+    # Trigger real-time analytics event if payment status changes significantly
+    try:
+        from .analytics_service import trigger_realtime_analytics_update
+        if old_status != status and db_payment.owner_id:  # Only if there was a change and we have an owner
+            analytics_data = {
+                "payment_id": db_payment.id,
+                "reference": reference,
+                "old_status": old_status,
+                "new_status": status,
+                "amount": db_payment.amount,
+                "customer_email": db_payment.customer_email,
+                "paywall_id": db_payment.paywall_id
+            }
+            await trigger_realtime_analytics_update("payment_status_updated", analytics_data, db_payment.owner_id)
+    except Exception as e:
+        # Log error but don't fail the payment update if analytics broadcast fails
+        import logging
+        logging.error(f"Failed to broadcast analytics event: {str(e)}")
+    
     return db_payment
 
 

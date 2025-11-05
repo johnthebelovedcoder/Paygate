@@ -1,0 +1,3 @@
+{
+  "tests/test_payment_and_access.py::TestPaymentServiceTransactions::test_get_transaction_by_reference": true
+}

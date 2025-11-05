@@ -1,0 +1,22 @@
+[
+  "tests/test_analytics_and_endpoints.py::TestAnalyticsEndpoints::test_get_dashboard_stats",
+  "tests/test_analytics_and_endpoints.py::TestAnalyticsEndpoints::test_get_revenue_by_month",
+  "tests/test_analytics_and_endpoints.py::TestAnalyticsEndpoints::test_get_top_paywalls",
+  "tests/test_analytics_and_endpoints.py::TestCreatorAnalyticsEndpoints::test_get_creator_paywall_performance_unauthorized",
+  "tests/test_analytics_and_endpoints.py::TestCreatorAnalyticsEndpoints::test_get_creator_revenue_summary_unauthorized",
+  "tests/test_analytics_and_endpoints.py::TestPaymentWebhook::test_paystack_webhook_missing_signature",
+  "tests/test_analytics_and_endpoints.py::TestProtectedContentEndpoints::test_check_content_access_unauthorized",
+  "tests/test_analytics_and_endpoints.py::TestProtectedContentEndpoints::test_get_protected_content_access_unauthorized",
+  "tests/test_analytics_and_endpoints.py::TestUserDeletionEndpoint::test_delete_own_account_unauthorized",
+  "tests/test_backend_enhancements.py::TestAccessService::test_generate_signed_s3_url",
+  "tests/test_backend_enhancements.py::TestPaymentProvider::test_paystack_provider_interface",
+  "tests/test_backend_enhancements.py::TestTransactionModel::test_create_transaction",
+  "tests/test_backend_enhancements.py::TestUserDeletion::test_delete_user_account",
+  "tests/test_payment_and_access.py::TestAccessService::test_check_user_access_to_content",
+  "tests/test_payment_and_access.py::TestModularPaymentProvider::test_payment_service_uses_provider",
+  "tests/test_payment_and_access.py::TestModularPaymentProvider::test_paystack_provider_initialization",
+  "tests/test_payment_and_access.py::TestPaymentServiceTransactions::test_create_transaction",
+  "tests/test_payment_and_access.py::TestPaymentServiceTransactions::test_get_transaction_by_reference",
+  "tests/test_payment_and_access.py::TestPaymentServiceTransactions::test_update_transaction_status",
+  "tests/test_payment_and_access.py::TestS3URLGeneration::test_generate_signed_s3_url"
+]

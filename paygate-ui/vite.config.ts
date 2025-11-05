@@ -1,6 +1,7 @@
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import { defineConfig } from 'vite';
+import type { ProxyOptions } from 'vite';
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -18,24 +19,43 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    strictPort: false,  // Allow fallback to different port if 3000 is busy
-    host: 'localhost', // Use localhost specifically
+    strictPort: true,  // Don't try other ports if 3000 is busy
+    host: '0.0.0.0',  // Listen on all network interfaces
+    open: true,  // Open browser automatically
     hmr: {
       host: 'localhost',
-      port: 3000, // Match the server port to avoid WebSocket issues
-      protocol: 'ws', // Use WebSocket protocol explicitly
-      overlay: false, // Disable error overlays that might cause reload loops
-      clientPort: 3000, // Explicitly set client port for HMR
+      port: 3000,
+      protocol: 'ws',
+      overlay: false,
+      clientPort: 3000,
     },
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8000',
+        target: 'http://localhost:8000',
         changeOrigin: true,
         secure: false,
-        headers: {
-          'X-Forwarded-Host': 'localhost:3000',
+        ws: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+        configure: (proxy, _options) => {
+          proxy.on('error', (err, _req, _res) => {
+            console.error('Proxy error:', err);
+          });
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            console.log('Sending Request to the Target:', {
+              method: req.method,
+              url: req.url,
+              headers: req.headers,
+            });
+          });
+          proxy.on('proxyRes', (proxyRes, req, _res) => {
+            console.log('Received Response from the Target:', {
+              statusCode: proxyRes.statusCode,
+              statusMessage: proxyRes.statusMessage,
+              headers: proxyRes.headers,
+            });
+          });
         },
-      },
+      } as ProxyOptions,
     },
     // Prevent infinite reload loops
     watch: {
