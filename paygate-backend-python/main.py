@@ -10,9 +10,18 @@ from utils.middleware.advanced_rate_limit import rate_limit_middleware
 from utils.middleware.security_headers import SecurityHeadersMiddleware
 from utils.cache import cache
 from config.cors import setup_cors
+from contextlib import asynccontextmanager
 
 # Import all models to ensure they're registered with SQLAlchemy
 import models
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Initialize database tables on startup
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+    # Cleanup on shutdown if needed
 
 # Create FastAPI application
 app = FastAPI(
@@ -24,7 +33,8 @@ app = FastAPI(
     openapi_url="/openapi.json",
     servers=[
         {"url": "http://localhost:8000", "description": "Local development server"},
-    ]
+    ],
+    lifespan=lifespan
 )
 
 # Configure CORS - This must be called before adding other middleware

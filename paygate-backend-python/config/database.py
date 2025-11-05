@@ -2,6 +2,22 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 from sqlalchemy.orm import sessionmaker, declarative_base
 from config.settings import settings
 from sqlalchemy.pool import AsyncAdaptedQueuePool
+import urllib.parse
+
+# Determine if we're using SQLite or PostgreSQL
+is_sqlite = settings.DATABASE_URL.startswith('sqlite')
+is_postgresql = settings.DATABASE_URL.startswith('postgresql')
+
+# Prepare connect_args based on the database type
+if is_sqlite:
+    connect_args = {
+        "check_same_thread": False,  # Needed for SQLite
+        "timeout": 30  # Connection timeout in seconds
+    }
+elif is_postgresql:
+    connect_args = {}
+else:
+    connect_args = {}
 
 # Create async engine with optimized connection pooling
 engine = create_async_engine(
@@ -12,10 +28,7 @@ engine = create_async_engine(
     max_overflow=30,  # Number of additional connections beyond pool_size
     pool_pre_ping=True,  # Verify connections before using them
     pool_recycle=3600,  # Recycle connections after 1 hour
-    connect_args={
-        "check_same_thread": False,  # Needed for SQLite
-        "timeout": 30  # Connection timeout in seconds
-    }
+    connect_args=connect_args
 )
 
 # Create async session factory

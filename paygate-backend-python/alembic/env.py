@@ -2,6 +2,13 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from alembic import context
+import os
+import sys
+from pathlib import Path
+
+# Add the backend directory to the path so imports work
+backend_path = Path(__file__).parent.parent
+sys.path.insert(0, str(backend_path))
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -17,10 +24,9 @@ if config.config_file_name is not None:
 from models import Base
 target_metadata = Base.metadata
 
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
-# my_important_option = config.get_main_option("my_important_option")
-# ... etc.
+# Use the application's DATABASE_URL from settings if available
+from config.settings import settings
+config.set_main_option('sqlalchemy.url', settings.DATABASE_URL)
 
 
 def run_migrations_offline() -> None:
