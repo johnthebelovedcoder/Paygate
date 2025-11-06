@@ -1,0 +1,6 @@
+# PostgreSQL dependencies
+psycopg2-binary>=2.9.0
+asyncpg>=0.27.0
+
+# Keep existing dependencies
+-r requirements.txt

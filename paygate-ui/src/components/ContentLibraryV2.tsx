@@ -120,8 +120,6 @@ const ContentLibrary: React.FC = () => {
             });
           }
         });
-          }
-        });
 
         const folderList = Object.values(folderMap);
         setFolders(folderList);
