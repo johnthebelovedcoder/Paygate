@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from config.database import engine
 from models import Base
-from routes import auth, users, paywall, content, payment, customer, analytics, upload, access, billing, notification, support, marketing, communication
+from routes import auth, users, paywall, content, payment, customer, analytics, upload, access, billing, notification, support, marketing, communication, supabase
 from utils.middleware.advanced_rate_limit import rate_limit_middleware
 from utils.middleware.security_headers import SecurityHeadersMiddleware
 from utils.cache import cache
@@ -68,6 +68,7 @@ app.include_router(notification.router, prefix="/api", tags=["notifications"])
 app.include_router(support.router, prefix="/api", tags=["support"])
 app.include_router(marketing.router, prefix="/api", tags=["marketing"])
 app.include_router(communication.router, prefix="/api", tags=["communication"])
+app.include_router(supabase.router, prefix="/api", tags=["supabase"])
 
 @app.get("/")
 def read_root():

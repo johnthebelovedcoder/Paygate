@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     PAYSTACK_SECRET_KEY: Optional[str] = os.getenv("PAYSTACK_SECRET_KEY")
     PAYSTACK_PUBLIC_KEY: Optional[str] = os.getenv("PAYSTACK_PUBLIC_KEY")
     
+    # Supabase configuration
+    NEXT_PUBLIC_SUPABASE_URL: Optional[str] = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: Optional[str] = os.getenv("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+    SUPABASE_SERVICE_ROLE_KEY: Optional[str] = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    
     # CORS - Handle both string (comma-separated) and list formats
     CORS_ORIGINS: Union[str, List[str]] = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:8000,http://127.0.0.1:8000,http://localhost:5173,http://127.0.0.1:5173"
     
@@ -44,12 +49,19 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = 'utf-8'
         case_sensitive = True
+        extra = "ignore"  # Ignore extra fields that are not defined in the model
     
     @property
     def cors_origins_list(self) -> List[str]:
         if isinstance(self.CORS_ORIGINS, str):
             return [origin.strip() for origin in self.CORS_ORIGINS.split(',')]
         return self.CORS_ORIGINS
+    
+    @property
+    def is_supabase_configured(self) -> bool:
+        """Check if Supabase is properly configured"""
+        return bool(self.NEXT_PUBLIC_SUPABASE_URL and 
+                   (self.NEXT_PUBLIC_SUPABASE_ANON_KEY or self.SUPABASE_SERVICE_ROLE_KEY))
 
 # Create settings instance
 @lru_cache()
