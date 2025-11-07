@@ -35,6 +35,7 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str = Field(..., min_length=8, max_length=128)
     username: Optional[str] = Field(None, min_length=1, max_length=50)  # Added username
+    name: Optional[str] = Field(None, min_length=1, max_length=100)  # For backward compatibility
 
     @validator('password')
     def validate_password(cls, v):
@@ -46,6 +47,13 @@ class UserCreate(UserBase):
             raise ValueError('Password must contain at least one digit')
         if not re.search(r'[!@#$%^&*(),.?":{}|<>]', v):
             raise ValueError('Password must contain at least one special character')
+        return v
+        
+    @validator('full_name', pre=True, always=True)
+    def set_full_name_from_name(cls, v, values):
+        # If full_name is not provided but name is, use name as full_name
+        if v is None and 'name' in values and values['name'] is not None:
+            return values['name']
         return v
 
     @validator('username', pre=True)

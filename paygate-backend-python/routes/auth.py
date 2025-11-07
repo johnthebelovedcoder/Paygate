@@ -19,11 +19,17 @@ EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
 
 @router.post("/auth/register", response_model=TokenResponse)
 async def register_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
+    # Log the incoming request data
+    print("\n=== Registration Request ===")
+    print(f"Incoming user data: {user.dict()}")
+    
     # Validate email format
     if not EMAIL_REGEX.match(user.email):
+        error_msg = f"Invalid email format: {user.email}"
+        print(error_msg)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid email format"
+            detail=error_msg
         )
     
     # Check if user already exists

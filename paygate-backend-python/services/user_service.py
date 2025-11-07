@@ -152,11 +152,11 @@ async def get_user_by_id(db: AsyncSession, user_id: int) -> Optional[User]:
 async def create_user(db: AsyncSession, user: UserCreate) -> User:
     hashed_password = get_password_hash(user.password)
     db_user = User(
-        name=user.name,
+        full_name=user.full_name,  # Use full_name instead of name
         email=user.email,
         hashed_password=hashed_password,
-        country=user.country,
-        currency=user.currency,
+        country=user.country if hasattr(user, 'country') else None,
+        currency=user.currency if hasattr(user, 'currency') else None,
         role="admin"  # Set all new users as admin by default
     )
     db.add(db_user)
@@ -165,7 +165,7 @@ async def create_user(db: AsyncSession, user: UserCreate) -> User:
     
     # Trigger welcome email in background
     from tasks.email import send_welcome_email
-    send_welcome_email.delay(user.email, user.name)
+    send_welcome_email.delay(user.email, user.full_name)
     
     return db_user
 

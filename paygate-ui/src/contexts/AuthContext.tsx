@@ -184,7 +184,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
       const response = await authService.register({
-        name,
+        full_name: name, // Changed from name to full_name
         email,
         password,
         ...(additionalData || {})

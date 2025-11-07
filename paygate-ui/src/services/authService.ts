@@ -35,7 +35,7 @@ export interface LoginCredentials {
 }
 
 export interface RegisterData {
-  name: string;
+  full_name: string;
   email: string;
   password: string;
   country?: string;
@@ -190,8 +190,8 @@ class AuthService {
     } = {}
   ): Promise<AuthResponse> {
     try {
-      const data: RegisterData = { 
-        name, 
+      const data = { 
+        full_name: name,  // Changed from name to full_name
         email, 
         password, 
         ...additionalData 
