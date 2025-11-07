@@ -707,7 +707,6 @@ async def get_revenue_forecast(db: AsyncSession, owner_id: int) -> RevenueForeca
     # For now, creating a mock forecast based on historical data
     from datetime import datetime, timedelta
     from decimal import Decimal
-    from schemas.analytics import RevenueForecastData
     
     # Get historical revenue data for the past 30 days
     thirty_days_ago = datetime.utcnow() - timedelta(days=30)

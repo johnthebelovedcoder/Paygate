@@ -1,49 +1,45 @@
+#!/usr/bin/env python
+"""
+Simple script to test database connectivity
+"""
 import asyncio
 import os
-from pathlib import Path
-import sys
-
-# Add the backend to the Python path
-project_root = Path(__file__).parent
-backend_path = project_root / "paygate-backend-python"
-sys.path.insert(0, str(backend_path))
-
-from config.settings import settings
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
-
 async def ping_database():
-    """Simple database ping test"""
-    print("Pinging database connection...")
-    print(f"DATABASE_URL: {settings.DATABASE_URL}")
+    # Get database URL from environment or use default
+    database_url = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./paygate.db")
     
+    # For Supabase, we need to remove pgbouncer parameter if present
+    if "pgbouncer=true" in database_url:
+        print(f"[INFO] Removing unsupported pgbouncer parameter from DATABASE_URL")
+        clean_url = database_url.replace("?pgbouncer=true", "").replace("&pgbouncer=true", "")
+        database_url = clean_url
+    
+    print(f"[INFO] Attempting to connect to database: {database_url}")
+    
+    engine = None
     try:
-        engine = create_async_engine(
-            settings.DATABASE_URL,
-            pool_pre_ping=True,  # This will test the connection
-        )
-        
-        print("Attempting to connect to database...")
+        engine = create_async_engine(database_url)
         async with engine.begin() as conn:
-            print("Connected successfully!")
-            result = await conn.execute("SELECT 1 as ping_test")
+            # For PostgreSQL/Supabase, execute a simple query
+            result = await conn.execute(text("SELECT 1"))
             row = result.fetchone()
-            print(f"Database ping successful! Result: {row[0] if row else 'No result'}")
             
-        print("\nDatabase connection test PASSED!")
-        return True
-            
+            if row:
+                print(f"[SUCCESS] Database connection successful!")
+                print(f"[INFO] Database returned: {row[0]}")
+            else:
+                print(f"[ERROR] Database connection returned no results")
+                
     except Exception as e:
-        print(f"Database ping FAILED: {str(e)}")
-        return False
-
+        print(f"[ERROR] Database connection failed: {e}")
+        import traceback
+        traceback.print_exc()
+    finally:
+        if engine:
+            await engine.dispose()
 
 if __name__ == "__main__":
-    print("Database Connection Ping Test")
-    print("=" * 40)
-    success = asyncio.run(ping_database())
-    
-    if success:
-        print("\nDatabase is accessible and responding!")
-    else:
-        print("\nDatabase connection failed. Please check your configuration.")
+    asyncio.run(ping_database())

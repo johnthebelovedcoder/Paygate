@@ -1,0 +1,3 @@
+id,name,email,hashed_password,is_active,is_verified,mfa_enabled,mfa_secret,role,country,currency,created_at,updated_at,last_login,username,avatar,user_type
+1,Test User,testuser@paygate.com,$2b$12$NTAMt18qfhWKhyDWNpvCa.N0X84/zFYgxKZAwIH.CCl3FIwLY7fPu,1,1,,,user,,,2025-10-29 05:59:37,,,,,
+2,Admin User,admin@example.com,$2b$12$a3GiM/WatavXlrBKyqyJa.mmwneaFu4xbb3OSYrP0YHnq1s2st2e6,1,1,,,admin,,,2025-10-29 05:59:43,2025-11-06 05:35:17,2025-11-06 05:35:17.464880,,,

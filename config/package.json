@@ -1,0 +1,69 @@
+{
+  "name": "paygate-ui",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@supabase/supabase-js": "^1.35.7",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.8.0",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^13.5.0",
+    "@types/jest": "^27.5.2",
+    "@types/node": "^20.0.0",
+    "@types/react": "^19.1.12",
+    "@types/react-dom": "^19.1.9",
+    "@vitejs/plugin-react": "^4.2.1",
+    "apexcharts": "^5.3.5",
+    "autoprefixer": "^10.4.21",
+    "axios": "^1.7.9",
+    "concurrently": "^9.2.1",
+    "i18next": "^25.6.0",
+    "postcss": "^8.5.6",
+    "react": "^19.1.1",
+    "react-apexcharts": "^1.7.0",
+    "react-dom": "^19.1.1",
+    "react-dropzone": "^14.3.8",
+    "react-i18next": "^16.0.1",
+    "react-is": "^19.1.1",
+    "react-router-dom": "^7.8.2",
+    "recharts": "^3.1.2",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^4.9.5",
+    "vite": "^5.2.11",
+    "web-vitals": "^2.1.4"
+  },
+  "scripts": {
+    "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
+    "frontend": "cd paygate-ui && npm run start",
+    "backend": "cd paygate-backend-python && python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload",
+    "build": "cd paygate-ui && npm run build",
+    "test": "cd paygate-ui && npm test",
+    "lint": "cd paygate-ui && npm run lint",
+    "lint:fix": "cd paygate-ui && npm run lint:fix",
+    "format": "cd paygate-ui && npm run format",
+    "format:check": "cd paygate-ui && npm run format:check"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@playwright/experimental-ct-react": "^1.56.0",
+    "@playwright/test": "^1.56.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.1.3",
+    "prettier": "^3.2.5",
+    "ts-unused-exports": "^11.0.1",
+    "vitest": "^3.2.4"
+  }
+}

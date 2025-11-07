@@ -37,32 +37,3 @@ python ping_db.py
 ```
 
 The Supabase API services (auth, storage, etc.) are working correctly - only the direct database connection was affected by this IPv4/IPv6 issue.
-
-## To Fix the Connection
-1. Log into your Supabase dashboard at https://supabase.com/dashboard/
-2. Create a new project or ensure your existing project is active
-3. Go to Project Settings > Database
-4. Copy the connection string and update your `.env` file:
-   ```
-   DATABASE_URL=postgresql+asyncpg://postgres:your_real_password@db.your-project-ref.supabase.co:5432/postgres
-   ```
-5. Update the other Supabase credentials as needed:
-   ```
-   NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_real_anon_key
-   SUPABASE_SERVICE_ROLE_KEY=your_real_service_role_key
-   ```
-
-## Verification
-Once you've updated your credentials:
-1. Run `python ping_db.py` to test the connection
-2. Or run `python test_supabase_integration.py` for a comprehensive test
-
-## Development Option
-If you want to work locally without Supabase, you can temporarily switch to SQLite:
-```
-# Comment out the PostgreSQL line and uncomment this:
-# DATABASE_URL=sqlite+aiosqlite:///./paygate_local.db
-```
-
-The application architecture is fully ready for Supabase - you just need valid credentials!

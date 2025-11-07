@@ -1,0 +1,7 @@
+id,title,description,content_ids,price,currency,duration,status,success_redirect_url,cancel_redirect_url,webhook_url,views,conversions,owner_id,created_at,updated_at
+1,docs.google.com,,[],90.0,USD,,active,,,,0,0,2,2025-10-30 07:25:18,
+2,docs.google.com,,[],90.0,USD,,active,,,,0,0,2,2025-10-30 07:25:22,
+3,docs.google.com,,[],90.0,USD,,active,,,,0,0,2,2025-10-30 07:25:36,
+4,docs.google.com (Copy),,[],90.0,USD,,draft,,,,0,0,2,2025-11-04 11:59:16,
+5,x.com,,[],20.0,USD,,active,,,,0,0,2,2025-11-04 14:48:03,
+6,x.com (Copy),,[],20.0,USD,,draft,,,,0,0,2,2025-11-04 15:16:20,

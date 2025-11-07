@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
+from sqlalchemy import func
 from typing import List, Optional, Tuple
 from datetime import datetime
 import json
@@ -21,10 +22,10 @@ async def get_paywall_by_id(db: AsyncSession, paywall_id: int) -> Optional[Paywa
 async def get_paywalls_by_owner(db: AsyncSession, owner_id: int, pagination: PaginationParams) -> Tuple[List[Paywall], int]:
     # Get total count efficiently
     count_result = await db.execute(
-        select(Paywall.id)
+        select(func.count(Paywall.id))
         .filter(Paywall.owner_id == owner_id)
     )
-    total = len(count_result.scalars().all())
+    total = count_result.scalar_one_or_none() or 0
     
     # Get paginated results with eager loading
     result = await db.execute(
@@ -43,9 +44,9 @@ async def get_paywalls_by_owner(db: AsyncSession, owner_id: int, pagination: Pag
 async def get_all_paywalls(db: AsyncSession, pagination: PaginationParams) -> Tuple[List[Paywall], int]:
     # Get total count efficiently
     count_result = await db.execute(
-        select(Paywall.id)
+        select(func.count(Paywall.id))
     )
-    total_count = len(count_result.scalars().all())
+    total_count = count_result.scalar_one_or_none() or 0
     
     # Get paginated results with eager loading
     result = await db.execute(

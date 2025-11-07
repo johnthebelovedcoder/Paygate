@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supabase Connection Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@1.35.7/dist/umd/supabase.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        .success { color: #10b981; }
+        .error { color: #ef4444; }
+        .loading { color: #3b82f6; }
+    </style>
+</head>
+<body>
+    <h1>Supabase Connection Test</h1>
+    
+    <div class="container">
+        <h2>Connection Status</h2>
+        <div id="status">Not connected</div>
+        
+        <h2>Test Database Connection</h2>
+        <button id="testConnection">Test Connection</button>
+        <button id="testAuth">Test Authentication</button>
+        <button id="testTables">List Tables</button>
+        
+        <div id="result" class="mt-4">
+            <h3>Results:</h3>
+            <pre id="output">Click a button to test...</pre>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Supabase
+        function initSupabase() {
+            try {
+                const supabaseUrl = 'https://ixbiabwdzmezugjtxnzi.supabase.co';
+                const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml4YmlhYndkem1lenVnanR4bnppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0Mjg3NDIsImV4cCI6MjA3ODAwNDc0Mn0.BqUwUz314K7lCIwmOwPzAduxQAygwJtNPV4CdugGhwY';
+                
+                // Check if Supabase is available
+                if (typeof supabase !== 'undefined' && supabase.createClient) {
+                    const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+                    
+                    // Update status
+                    document.getElementById('status').textContent = 'Connected to Supabase';
+                    document.getElementById('status').className = 'success';
+                    
+                    // Enable buttons
+                    document.querySelectorAll('button').forEach(btn => {
+                        btn.disabled = false;
+                    });
+                    
+                    return supabaseClient;
+                } else {
+                    throw new Error('Supabase client not loaded');
+                }
+            } catch (error) {
+                console.error('Error initializing Supabase:', error);
+                document.getElementById('status').textContent = 'Error connecting to Supabase. Check console for details.';
+                document.getElementById('status').className = 'error';
+                return null;
+            }
+        }
+        
+        // Initialize Supabase when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            const supabase = initSupabase();
+            
+            // Set up event listeners
+            if (supabase) {
+                setupEventListeners(supabase);
+            }
+        });
+        
+        function setupEventListeners(supabase) {
+
+            // Test connection button
+            document.getElementById('testConnection').addEventListener('click', async () => {
+            const output = document.getElementById('output');
+            output.textContent = 'Testing connection...';
+            output.className = 'loading';
+            
+            try {
+                // Test a simple query
+                const { data, error } = await supabase
+                    .from('users')
+                    .select('*')
+                    .limit(1);
+                
+                if (error) throw error;
+                
+                output.textContent = '✅ Successfully connected to Supabase!\n\nSample user data:\n' + 
+                    JSON.stringify(data, null, 2);
+                output.className = 'success';
+            } catch (error) {
+                output.textContent = '❌ Error connecting to Supabase:\n' + error.message;
+                output.className = 'error';
+                console.error(error);
+            }
+        });
+
+            // Test authentication button
+            document.getElementById('testAuth').addEventListener('click', async () => {
+            const output = document.getElementById('output');
+            output.textContent = 'Testing authentication...';
+            output.className = 'loading';
+            
+            try {
+                // First, sign in (you'll need to replace with actual test credentials)
+                const { user, error } = await supabase.auth.signIn({
+                    email: 'test@example.com',
+                    password: 'password'
+                });
+                
+                if (error) throw error;
+                
+                output.textContent = '✅ Authentication successful!\n\nUser data:\n' + 
+                    JSON.stringify({
+                        email: user.email,
+                        id: user.id,
+                        last_sign_in: user.last_sign_in_at
+                    }, null, 2);
+                output.className = 'success';
+            } catch (error) {
+                output.textContent = '❌ Authentication failed. This is expected if test credentials are incorrect.\n\n' + 
+                    'Error details:\n' + error.message;
+                output.className = 'error';
+                console.error(error);
+            }
+        });
+
+            // List tables button
+            document.getElementById('testTables').addEventListener('click', async () => {
+            const output = document.getElementById('output');
+            output.textContent = 'Fetching tables...';
+            output.className = 'loading';
+            
+            try {
+                // Use the get_tables function we created earlier
+                const { data, error } = await supabase
+                    .rpc('get_tables');
+                
+                if (error) throw error;
+                
+                output.textContent = '✅ Found tables:\n' + 
+                    JSON.stringify(data, null, 2) + 
+                    '\n\nUse these table names to query your data.';
+                output.className = 'success';
+            } catch (error) {
+                output.textContent = '❌ Error fetching tables. Make sure the get_tables function exists.\n\n' + 
+                    'Error details:\n' + error.message;
+                output.className = 'error';
+                console.error(error);
+            }
+        });
+        }
+    </script>
+</body>
+</html>

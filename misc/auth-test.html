@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supabase Auth Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@1.35.7/dist/umd/supabase.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        input {
+            padding: 8px;
+            margin: 5px 0;
+            width: 100%;
+            max-width: 300px;
+            display: block;
+        }
+        .success { color: #10b981; }
+        .error { color: #ef4444; }
+        .loading { color: #3b82f6; }
+        .auth-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Supabase Auth Test</h1>
+    
+    <div class="container">
+        <div id="auth-status">Checking authentication status...</div>
+        
+        <!-- Auth UI -->
+        <div id="auth-section" class="auth-section" style="display: none;">
+            <h3>Authentication</h3>
+            <input type="email" id="email" placeholder="Email" value="test@example.com">
+            <input type="password" id="password" placeholder="Password" value="testpassword">
+            <button id="signUp">Sign Up</button>
+            <button id="signIn">Sign In</button>
+            <button id="signOut" style="display: none;">Sign Out</button>
+            <div id="auth-message" style="margin-top: 10px;"></div>
+        </div>
+
+        <!-- Database Test Section -->
+        <div id="db-section" style="display: none; margin-top: 20px;">
+            <h3>Database Test</h3>
+            <button id="testConnection">Test Database Connection</button>
+            <button id="listTables">List Tables</button>
+            <button id="viewUsers">View Users</button>
+            <div id="db-result" style="margin-top: 10px;">
+                <pre id="output">Results will appear here...</pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variable to store the Supabase client
+        let supabase;
+        
+        // Initialize the application when the DOM is fully loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            try {
+                // Initialize Supabase
+                const SUPABASE_URL = 'https://ixbiabwdzmezugjtxnzi.supabase.co';
+                const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml4YmlhYndkem1lenVnanR4bnppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0Mjg3NDIsImV4cCI6MjA3ODAwNDc0Mn0.BqUwUz314K7lCIwmOwPzAduxQAygwJtNPV4CdugGhwY';
+                
+                // Check if Supabase is loaded
+                if (typeof supabase === 'undefined' || !supabase.createClient) {
+                    throw new Error('Supabase client not loaded. Please check your internet connection.');
+                }
+                
+                // Create Supabase client
+                supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                
+                // Initialize the application
+                initApp();
+            } catch (error) {
+                console.error('Initialization error:', error);
+                document.getElementById('auth-status').textContent = 'Error initializing application: ' + error.message;
+            }
+        });
+        
+        function initApp() {
+            // DOM elements
+            const authStatus = document.getElementById('auth-status');
+            const authSection = document.getElementById('auth-section');
+            const dbSection = document.getElementById('db-section');
+            const authMessage = document.getElementById('auth-message');
+            const output = document.getElementById('output');
+
+            // Show auth section
+            authSection.style.display = 'block';
+            
+            // Check initial auth state
+            checkAuthState();
+
+            // Auth state changed
+            supabase.auth.onAuthStateChange((event, session) => {
+                console.log('Auth state changed:', event, session);
+                checkAuthState();
+            });
+
+        // Check auth state
+        function checkAuthState() {
+            try {
+                const user = supabase.auth.user();
+                const authStatus = document.getElementById('auth-status');
+                const authSection = document.getElementById('auth-section');
+                const dbSection = document.getElementById('db-section');
+                const signOutBtn = document.getElementById('signOut');
+                
+                if (user) {
+                    authStatus.innerHTML = `✅ Signed in as: <strong>${user.email}</strong>`;
+                    authSection.style.display = 'none';
+                    if (dbSection) dbSection.style.display = 'block';
+                    if (signOutBtn) signOutBtn.style.display = 'inline-block';
+                } else {
+                    authStatus.textContent = '🔒 Not signed in';
+                    authSection.style.display = 'block';
+                    if (dbSection) dbSection.style.display = 'none';
+                    if (signOutBtn) signOutBtn.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Auth state check error:', error);
+                if (authStatus) {
+                    authStatus.textContent = 'Error checking auth state: ' + error.message;
+                }
+            }
+        }
+
+        // Sign up
+        document.getElementById('signUp').addEventListener('click', async () => {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            if (!email || !password) {
+                showMessage('Please enter both email and password', 'error');
+                return;
+            }
+            
+            showMessage('Creating account...', 'loading');
+            
+            try {
+                const { user, error } = await supabase.auth.signUp({
+                    email,
+                    password
+                });
+
+                if (error) throw error;
+                
+                showMessage('✅ Check your email for the confirmation link!', 'success');
+            } catch (error) {
+                showMessage('❌ Error: ' + error.message, 'error');
+                console.error('Sign up error:', error);
+            }
+        });
+
+        // Sign in
+        document.getElementById('signIn').addEventListener('click', async () => {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            if (!email || !password) {
+                showMessage('Please enter both email and password', 'error');
+                return;
+            }
+            
+            showMessage('Signing in...', 'loading');
+            
+            try {
+                const { user, error } = await supabase.auth.signIn({
+                    email,
+                    password
+                });
+
+                if (error) throw error;
+                
+                showMessage('✅ Successfully signed in!', 'success');
+            } catch (error) {
+                showMessage('❌ Error: ' + error.message, 'error');
+                console.error('Sign in error:', error);
+            }
+        });
+
+        // Sign out
+        document.getElementById('signOut').addEventListener('click', async () => {
+            showMessage('Signing out...', 'loading');
+            await supabase.auth.signOut();
+            showMessage('✅ Signed out successfully', 'success');
+        });
+
+        // Test database connection
+        document.getElementById('testConnection').addEventListener('click', async () => {
+            showOutput('Testing database connection...', 'loading');
+            
+            try {
+                const { data, error } = await supabase
+                    .from('users')
+                    .select('*')
+                    .limit(2);
+                
+                if (error) throw error;
+                
+                showOutput('✅ Successfully connected to database!\n\nSample data:', 'success');
+                appendOutput(JSON.stringify(data, null, 2));
+            } catch (error) {
+                showOutput('❌ Error connecting to database:', 'error');
+                appendOutput(error.message);
+                console.error('Database error:', error);
+            }
+        });
+
+        // List tables
+        document.getElementById('listTables').addEventListener('click', async () => {
+            showOutput('Fetching tables...', 'loading');
+            
+            try {
+                const { data, error } = await supabase.rpc('get_tables');
+                
+                if (error) throw error;
+                
+                if (data && data.length > 0) {
+                    showOutput('Available tables:', 'success');
+                    appendOutput(JSON.stringify(data, null, 2));
+                } else {
+                    showOutput('No tables found or get_tables function not created.', 'info');
+                    appendOutput('To create the get_tables function, run this SQL in your Supabase SQL editor:\n\n' +
+                        'CREATE OR REPLACE FUNCTION get_tables()\n' +
+                        'RETURNS TABLE (table_name text) \n' +
+                        'LANGUAGE sql\n' +
+                        'AS $$\n' +
+                        '  SELECT table_name \n' +
+                        '  FROM information_schema.tables \n' +
+                        '  WHERE table_schema = \'public\'\n' +
+                        '  ORDER BY table_name;\n' +
+                        '$$;');
+                }
+            } catch (error) {
+                showOutput('❌ Error fetching tables:', 'error');
+                appendOutput(error.message);
+                console.error('Tables error:', error);
+            }
+        });
+
+        // View users
+        document.getElementById('viewUsers').addEventListener('click', async () => {
+            showOutput('Fetching users...', 'loading');
+            
+            try {
+                const { data, error } = await supabase
+                    .from('users')
+                    .select('*')
+                    .limit(10);
+                
+                if (error) throw error;
+                
+                showOutput('Users:', 'success');
+                appendOutput(JSON.stringify(data, null, 2));
+            } catch (error) {
+                showOutput('❌ Error fetching users:', 'error');
+                appendOutput(error.message);
+                console.error('Users error:', error);
+            }
+        });
+
+        // Helper functions
+        function showMessage(message, type = '') {
+            const authMessage = document.getElementById('auth-message');
+            if (authMessage) {
+                authMessage.textContent = message;
+                authMessage.className = type;
+            }
+        }
+
+        function showOutput(message, type = '') {
+            const output = document.getElementById('output');
+            if (output) {
+                output.textContent = message;
+                output.className = type;
+            }
+        }
+
+        function appendOutput(text) {
+            const output = document.getElementById('output');
+            if (output) {
+                output.textContent += '\n\n' + text;
+            }
+        }
+        }
+    </script>
+</body>
+</html>

@@ -5,18 +5,16 @@ import re
 from utils.validation import sanitize_string, is_valid_name, is_valid_email
 
 class UserBase(BaseModel):
-    name: str = Field(..., min_length=2, max_length=100)
     email: EmailStr = Field(..., max_length=255)
-    role: Optional[str] = Field("admin", min_length=1, max_length=50)
-    country: Optional[str] = Field(None, min_length=1, max_length=100)
-    currency: Optional[str] = Field(None, min_length=1, max_length=10)
+    full_name: Optional[str] = Field(None, min_length=2, max_length=100)  # Changed from 'name' to 'full_name'
+    role: Optional[str] = Field("user", min_length=1, max_length=50)  # Changed default from "admin" to "user"
 
-    @validator('name')
-    def validate_and_sanitize_name(cls, v):
-        if not v:
-            raise ValueError('Name is required')
+    @validator('full_name', pre=True)
+    def validate_and_sanitize_full_name(cls, v):
+        if v is None:
+            return v
         if not is_valid_name(v):
-            raise ValueError('Invalid name format')
+            raise ValueError('Invalid full name format')
         return sanitize_string(v)
 
     @validator('email')
@@ -27,7 +25,7 @@ class UserBase(BaseModel):
             raise ValueError('Invalid email format')
         return sanitize_string(v)
 
-    @validator('role', 'country', 'currency', pre=True)
+    @validator('role', pre=True)
     def validate_and_sanitize_optional_fields(cls, v):
         if v is None:
             return v
@@ -36,8 +34,7 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str = Field(..., min_length=8, max_length=128)
-    user_type: Optional[str] = Field(None, min_length=1, max_length=50)
-    content_types: Optional[list] = []
+    username: Optional[str] = Field(None, min_length=1, max_length=50)  # Added username
 
     @validator('password')
     def validate_password(cls, v):
@@ -51,33 +48,24 @@ class UserCreate(UserBase):
             raise ValueError('Password must contain at least one special character')
         return v
 
-    @validator('user_type', pre=True)
-    def validate_and_sanitize_user_type(cls, v):
+    @validator('username', pre=True)
+    def validate_and_sanitize_username(cls, v):
         if v is None:
             return v
         return sanitize_string(v)
 
-    @validator('content_types', pre=True)
-    def validate_and_sanitize_content_types(cls, v):
-        if not v:
-            return v
-        # Sanitize each content type string
-        sanitized = []
-        for item in v:
-            if isinstance(item, str):
-                sanitized.append(sanitize_string(item))
-            else:
-                sanitized.append(item)
-        return sanitized
-
 
 class UserUpdate(BaseModel):
-    name: Optional[str] = None
+    full_name: Optional[str] = None
     email: Optional[str] = None
-    country: Optional[str] = None
-    currency: Optional[str] = None
+    role: Optional[str] = None
+    avatar_url: Optional[str] = None
+    bio: Optional[str] = None
+    phone: Optional[str] = None
+    company: Optional[str] = None
+    job_title: Optional[str] = None
 
-    @validator('name', 'email', 'country', 'currency', pre=True)
+    @validator('full_name', 'email', 'role', 'avatar_url', 'bio', 'phone', 'company', 'job_title', pre=True)
     def validate_and_sanitize_update_fields(cls, v):
         if v is None:
             return v
@@ -101,10 +89,14 @@ class UserInDB(UserBase):
     id: int
     is_active: bool
     is_verified: bool
-    mfa_enabled: Optional[bool] = False
+    username: Optional[str] = None
+    avatar_url: Optional[str] = None
+    bio: Optional[str] = None
+    phone: Optional[str] = None
+    company: Optional[str] = None
+    job_title: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
-    last_login: Optional[datetime] = None
 
     class Config:
         from_attributes = True
