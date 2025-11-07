@@ -18,15 +18,40 @@ router = APIRouter()
 EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
 
 @router.post("/auth/register", response_model=TokenResponse)
-async def register_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
-    # Log the incoming request data
+async def register_user(user: UserCreate, request: Request, db: AsyncSession = Depends(get_db)):
+    # Log the incoming request
     print("\n=== Registration Request ===")
-    print(f"Incoming user data: {user.dict()}")
+    
+    # Log headers
+    print("\n--- Headers ---")
+    for name, value in request.headers.items():
+        print(f"{name}: {value}")
+    
+    # Log raw request body
+    print("\n--- Raw Request Body ---")
+    try:
+        body = await request.body()
+        print(body.decode())
+    except Exception as e:
+        print(f"Error reading request body: {str(e)}")
+    
+    # Log parsed user data
+    print("\n--- Parsed User Data ---")
+    try:
+        user_dict = user.dict()
+        print(f"User data: {user_dict}")
+        print(f"User model fields: {user.__fields__.keys()}")
+    except Exception as e:
+        print(f"Error parsing user data: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Error parsing request data: {str(e)}"
+        )
     
     # Validate email format
     if not EMAIL_REGEX.match(user.email):
         error_msg = f"Invalid email format: {user.email}"
-        print(error_msg)
+        print(f"\n--- Validation Error ---\n{error_msg}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=error_msg
