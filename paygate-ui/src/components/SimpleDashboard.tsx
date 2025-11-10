@@ -5,6 +5,7 @@ import StatsCard from './StatsCard';
 import AnalyticsChart from './AnalyticsChart';
 import { useAppData, useToast } from '../contexts';
 import { useAuth } from '../contexts/AuthContext';
+import analyticsService from '../services/analyticsService';
 
 // Define TypeScript interfaces
 interface DashboardStats {
@@ -70,27 +71,52 @@ const SimpleDashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    // Simulate data loading
-    const loadData = () => {
-      // For this simplified version, we'll use mock data directly
-      setStats(mockStats);
-      setRevenueData(mockRevenueData);
-      setTopPaywalls(mockTopPaywalls);
-      
-      // Convert revenue data for chart
-      const chartData = mockRevenueData.map(item => ({
-        name: item.date,
-        value: item.revenue
-      }));
-      setFilteredRevenueData(chartData);
-      
-      setLoading(false);
+    const loadDashboardData = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch dashboard stats
+        const statsResponse = await analyticsService.getDashboardStats();
+        setStats(statsResponse);
+        
+        // Fetch revenue data
+        const revenueResponse = await analyticsService.getRevenueData(timeRange);
+        setRevenueData(revenueResponse as RevenueData[]);
+        
+        // Fetch top paywalls
+        const topPaywallsResponse = await analyticsService.getTopPaywalls(5);
+        setTopPaywalls(topPaywallsResponse);
+        
+        // Convert revenue data for chart
+        const chartData = revenueResponse.map(item => ({
+          name: 'date' in item ? item.date : (item as any).date,
+          value: 'revenue' in item ? item.revenue : (item as any).revenue
+        }));
+        setFilteredRevenueData(chartData);
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+        showToast('Error loading dashboard data', 'error');
+        // Set default empty values on error
+        setStats({
+          totalRevenue: 0,
+          totalSales: 0,
+          totalVisitors: 0,
+          conversionRate: 0,
+          avgOrderValue: 0,
+          activePaywalls: 0,
+          recentPayments: 0,
+          totalCustomers: 0,
+        });
+        setRevenueData([]);
+        setTopPaywalls([]);
+        setFilteredRevenueData([]);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    // Add slight delay to simulate loading
-    const timer = setTimeout(loadData, 300);
-    return () => clearTimeout(timer);
-  }, []);
+    loadDashboardData();
+  }, [timeRange]);
 
   // Header actions
   const headerActions = (

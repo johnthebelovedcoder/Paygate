@@ -25,6 +25,10 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)  # Added index
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), index=True)  # Added index
 
+    # Relationships
+    ab_tests = relationship("ABTest", back_populates="owner", cascade="all, delete-orphan")
+    ab_test_variants = relationship("ABTestVariant", back_populates="test")
+
     # Compound indexes for common queries
     __table_args__ = (
         Index('idx_user_email_active', 'email', 'is_active'),  # For auth queries

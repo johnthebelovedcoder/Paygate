@@ -15,11 +15,13 @@ from .support import SupportCategory, SupportTicket, SupportTicketResponse
 from .marketing import DiscountCode, Affiliate, AffiliateReferral, MarketingCampaign, EmailList, EmailSubscriber
 from .audit import AuditLog, DataChangeLog
 from .token_blacklist import TokenBlacklist
+from .ab_test import ABTest, ABTestVariant
 
 __all__ = [
     "Base", "User", "Content", "Paywall", "Payment", "Customer", "ContentAccess", "TokenBlacklist",
     "SubscriptionPlan", "Subscription", "Invoice", "Coupon", "BillingInfo", "PaymentMethod",
     "Notification", "NotificationPreference",
     "SupportCategory", "SupportTicket", "SupportTicketResponse",
-    "DiscountCode", "Affiliate", "AffiliateReferral", "MarketingCampaign", "EmailList", "EmailSubscriber"
+    "DiscountCode", "Affiliate", "AffiliateReferral", "MarketingCampaign", "EmailList", "EmailSubscriber",
+    "ABTest", "ABTestVariant"
 ]
