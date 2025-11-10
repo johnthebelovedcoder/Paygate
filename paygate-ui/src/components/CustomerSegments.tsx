@@ -91,7 +91,7 @@ const CustomerSegments: React.FC = () => {
                 const mockCustomers: Customer[] = [
                   {
                     id: '1',
-                    name: 'John Doe',
+                    name: user?.full_name || user?.name || user?.email?.split('@')[0] || 'Customer',
                     email: 'john@example.com',
                     totalSpent: 125.5,
                     purchaseHistory: [],

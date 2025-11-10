@@ -12,5 +12,7 @@ from . import billing
 from . import notification
 from . import support
 from . import marketing
+from . import backup
+from . import monitoring
 
 __all__ = ["auth", "users", "paywall", "content", "payment", "customer", "analytics", "upload", "access", "billing", "notification", "support", "marketing"]

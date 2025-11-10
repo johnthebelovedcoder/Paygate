@@ -99,3 +99,46 @@ def send_password_reset_email(self, user_email, reset_token):
     """
     
     return send_email_task.delay(user_email, subject, body)
+
+@celery_app.task(bind=True)
+def send_verification_email(self, user_email, user_name, verification_token):
+    """
+    Send email verification in background
+    """
+    from config.settings import settings
+    verification_url = f"{settings.FRONTEND_URL}/verify-email/{verification_token}"
+    subject = "Verify Your Email Address"
+    body = f"""
+    Hi {user_name},
+    
+    Thank you for registering with Paygate!
+    
+    Please verify your email address by clicking the link below:
+    {verification_url}
+    
+    If you did not create an account with us, please ignore this email.
+    
+    Best regards,
+    The Paygate Team
+    """
+    
+    html_body = f"""
+    <html>
+        <body>
+            <h2>Welcome to Paygate!</h2>
+            <p>Hi {user_name},</p>
+            <p>Thank you for registering with Paygate!</p>
+            <p>Please verify your email address by clicking the button below:</p>
+            <a href="{verification_url}" style="display:inline-block; padding:10px 20px; background-color:#3B82F6; color:white; text-decoration:none; border-radius:5px;">
+                Verify Email Address
+            </a>
+            <p>If the button doesn't work, copy and paste this link into your browser:</p>
+            <p>{verification_url}</p>
+            <p>If you did not create an account with us, please ignore this email.</p>
+            <br>
+            <p>Best regards,<br>The Paygate Team</p>
+        </body>
+    </html>
+    """
+
+    return send_email_task.delay(user_email, subject, body, html_body)

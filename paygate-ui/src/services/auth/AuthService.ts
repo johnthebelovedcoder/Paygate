@@ -40,12 +40,20 @@ class AuthService {
     }
   }
 
-  async register(data: RegisterData): Promise<AuthResponse> {
+  async register(data: RegisterData): Promise<AuthResponse | { success: boolean; message: string }> {
     try {
       const response = await authApi.register(data);
       const responseData = response.data;
-      this.handleAuthResponse(responseData);
-      return responseData;
+      
+      // Check if the response contains tokens (user is logged in) or just a success message (email verification required)
+      if ('access_token' in responseData && 'refresh_token' in responseData) {
+        // User has been authenticated directly
+        this.handleAuthResponse(responseData);
+        return responseData;
+      } else {
+        // Email verification required
+        return responseData;
+      }
     } catch (error) {
       throw handleApiError(error, 'Registration failed');
     }

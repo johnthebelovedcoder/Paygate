@@ -32,7 +32,7 @@ export interface AuthContextType {
       userType?: 'creator' | 'business' | 'other';
       contentTypes?: string[];
     }
-  ) => Promise<{ success: boolean; error?: string }>;
+  ) => Promise<{ success: boolean; error?: string; requiresVerification?: boolean }>;
   checkAuth: () => Promise<boolean>;
   refreshAccessToken: () => Promise<boolean>;
   getAuthStatus: () => { isAuthenticated: boolean; isTokenExpired: boolean; expiresIn: number };
@@ -177,7 +177,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     additionalData?: {
       country?: string;
       currency?: string;
-      userType?: 'creator' | 'business' | 'other';
+      userType?: 'creator' | 'business' | 'other';  // Changed from userType to match backend
       contentTypes?: string[];
     }
   ) => {
@@ -187,14 +187,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         full_name: name, // Changed from name to full_name
         email,
         password,
-        ...(additionalData || {})
+        ...(additionalData ? {
+          country: additionalData.country,
+          currency: additionalData.currency,
+          user_type: additionalData.userType, // Map userType to user_type
+          contentTypes: additionalData.contentTypes
+        } : {})
       });
-      setUser(response.user);
-      localStorage.setItem('user', JSON.stringify(response.user));
-      toast.success('Registration successful! Welcome to Paygate.');
-      const redirectPath = additionalData?.userType === 'creator' ? '/onboarding' : '/dashboard';
-      navigate(redirectPath);
-      return { success: true };
+      
+      // Check if the response indicates that email verification is required
+      if (response.success && response.message?.includes('verify')) {
+        // Don't set user in localStorage since they need to verify email first
+        toast.success(response.message || 'Registration successful! Please check your email to verify your account.');
+        navigate('/verification-success'); // Redirect to verification success page
+        return { success: true, requiresVerification: true };
+      } else {
+        // If there are tokens in the response, user is already verified
+        setUser(response.user);
+        localStorage.setItem('user', JSON.stringify(response.user));
+        toast.success('Registration successful! Welcome to Paygate.');
+        const redirectPath = additionalData?.userType === 'creator' ? '/onboarding' : '/dashboard';
+        navigate(redirectPath);
+        return { success: true, requiresVerification: false };
+      }
     } catch (error: unknown) {
       const errorMessage = isAxiosError(error)
         ? (error.response?.data as any)?.message || 'Registration failed. Please try again.'

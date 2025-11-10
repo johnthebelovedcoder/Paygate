@@ -112,7 +112,7 @@ const PaywallDemo: React.FC = () => {
             <span className="text-gray-600">JD</span>
           </div>
           <div>
-            <p className="font-medium">John Doe</p>
+            <p className="font-medium">{user?.full_name || user?.name || user?.email?.split('@')[0] || 'Customer'}</p>
             <p className="text-sm text-gray-500">Digital Entrepreneur & Content Creator</p>
           </div>
         </div>

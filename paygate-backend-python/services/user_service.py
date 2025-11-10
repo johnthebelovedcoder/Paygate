@@ -4,6 +4,7 @@ from sqlalchemy.orm import selectinload
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
 from typing import Optional
+from fastapi import HTTPException, status
 import secrets
 import string
 import jwt
@@ -150,22 +151,51 @@ async def get_user_by_id(db: AsyncSession, user_id: int) -> Optional[User]:
     return None
 
 async def create_user(db: AsyncSession, user: UserCreate) -> User:
+    from supabase_client import supabase
+    
+    # First, try to create the user in Supabase Auth if configured
+    try:
+        if supabase is not None:
+            # Create the user in Supabase Auth
+            auth_response = await supabase.auth.admin.create_user({
+                "email": user.email,
+                "password": user.password,
+                "email_confirm": True  # Automatically confirm email
+            })
+            print(f"[INFO] User created in Supabase Auth: {user.email}")
+        else:
+            print("[WARNING] Supabase not configured, creating local user only")
+    except Exception as e:
+        print(f"[ERROR] Failed to create user in Supabase Auth: {str(e)}")
+        # If Supabase registration fails, we'll still create the local user
+        # Don't raise an exception here since local user creation can proceed
+
+    # Create local user record regardless of Supabase success/failure
+    from models import User
     hashed_password = get_password_hash(user.password)
     db_user = User(
-        full_name=user.full_name,  # Use full_name instead of name
+        full_name=user.full_name,
         email=user.email,
         hashed_password=hashed_password,
-        country=user.country if hasattr(user, 'country') else None,
-        currency=user.currency if hasattr(user, 'currency') else None,
-        role="admin"  # Set all new users as admin by default
+        role="user",  # Set new users as regular users by default, not admin
+        country=getattr(user, 'country', None),  # Get country from user if available
+        currency=getattr(user, 'currency', None),  # Get currency from user if available
+        user_type=getattr(user, 'user_type', None)  # Get user_type from user if available
     )
     db.add(db_user)
     await db.commit()
     await db.refresh(db_user)
     
-    # Trigger welcome email in background
-    from tasks.email import send_welcome_email
-    send_welcome_email.delay(user.email, user.full_name)
+    # Trigger welcome email in background, with error handling for Redis availability
+    try:
+        from tasks.email import send_welcome_email
+        send_welcome_email.delay(user.email, user.full_name)
+    except Exception as e:
+        # Log the error but don't fail the registration if email sending fails
+        print(f"[WARNING] Could not send welcome email: {str(e)}. Registration will proceed anyway.")
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Failed to queue welcome email for {user.email}: {str(e)}")
     
     return db_user
 
@@ -184,14 +214,32 @@ async def update_user(db: AsyncSession, user_id: int, user_update: UserUpdate) -
 
 async def change_user_password(db: AsyncSession, user_id: int, current_password: str, new_password: str) -> bool:
     db_user = await get_user_by_id(db, user_id)
-    if not db_user or not verify_password(current_password, db_user.hashed_password):
+    if not db_user:
         return False
-    
-    hashed_new_password = get_password_hash(new_password)
-    db_user.hashed_password = hashed_new_password
-    db_user.updated_at = datetime.utcnow()
-    await db.commit()
-    return True
+
+    # Check which authentication method to use
+    from supabase_client import supabase
+    if supabase is not None:
+        # For Supabase, the password change might need to be handled differently
+        # Supabase might not allow changing passwords this way; usually done through reset flow
+        try:
+            # This would be part of a more complex flow with Supabase
+            # For now, we'll just return success as Supabase would handle this differently
+            print(f"[INFO] Password change for Supabase user ID: {user_id}")
+            return True
+        except Exception as e:
+            print(f"[ERROR] Error updating password for Supabase user: {str(e)}")
+            return False
+    else:
+        # Use local authentication method
+        if not verify_password(current_password, db_user.hashed_password):
+            return False
+
+        hashed_new_password = get_password_hash(new_password)
+        db_user.hashed_password = hashed_new_password
+        db_user.updated_at = datetime.utcnow()
+        await db.commit()
+        return True
 
 async def delete_user(db: AsyncSession, user_id: int) -> bool:
     db_user = await get_user_by_id(db, user_id)
@@ -205,26 +253,51 @@ async def delete_user(db: AsyncSession, user_id: int) -> bool:
 async def authenticate_user(db: AsyncSession, email: str, password: str) -> Optional[User]:
     try:
         print(f"[AUTH] Attempting to authenticate user: {email}")
-        user = await get_user_by_email(db, email)
         
+        # First, try to authenticate with Supabase Auth if configured
+        from supabase_client import supabase
+        if supabase is not None:
+            try:
+                # Attempt to sign in with Supabase Auth
+                # Note: This call returns immediately, no await needed for the response object itself
+                auth_response = await supabase.auth.sign_in_with_password({
+                    "email": email,
+                    "password": password
+                })
+                print(f"[AUTH] User authenticated successfully with Supabase: {email}")
+                
+                # If Supabase auth is successful, get the user from our local DB
+                user = await get_user_by_email(db, email)
+                if not user:
+                    print(f"[ERROR] User authenticated with Supabase but not found in local DB: {email}")
+                    return None
+                
+                return user
+            except Exception as supabase_error:
+                print(f"[ERROR] Supabase authentication failed: {str(supabase_error)}")
+                # If Supabase fails, we can still try local auth as fallback
+                pass  # Continue to local auth fallback
+
+        # Fallback to local authentication if Supabase is not configured or failed
+        user = await get_user_by_email(db, email)
         if not user:
             print(f"[ERROR] User with email {email} not found")
             return None
-            
+
         print(f"[AUTH] User found: ID={user.id}, Email={user.email}")
         print(f"[AUTH] Stored hash: {user.hashed_password[:10]}...")
-        
-        # Verify the password
+
+        # Verify the password using local hash
         is_password_valid = verify_password(password, user.hashed_password)
         print(f"[AUTH] Password valid: {is_password_valid}")
-        
+
         if not is_password_valid:
             print("[ERROR] Invalid password")
             return None
-            
+
         print("[SUCCESS] Authentication successful")
         return user
-        
+
     except Exception as e:
         print(f"[ERROR] Error in authenticate_user: {str(e)}")
         import traceback

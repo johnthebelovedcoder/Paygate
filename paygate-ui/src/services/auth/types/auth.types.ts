@@ -6,12 +6,13 @@ export interface LoginCredentials {
 }
 
 export interface RegisterData {
-  name: string;
+  full_name: string;  // Changed from 'name' to 'full_name' to match backend schema
   email: string;
   password: string;
+  username?: string;
   country?: string;
   currency?: string;
-  userType?: 'creator' | 'business' | 'other';
+  user_type?: string;  // Changed to match backend schema
   contentTypes?: string[];
 }
 

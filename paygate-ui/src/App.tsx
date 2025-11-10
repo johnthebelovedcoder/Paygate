@@ -30,6 +30,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import EmailVerification from './components/EmailVerification';
 import PaywallDemo from './components/paywall/PaywallDemo';
 import MockPaywallCreator from './components/MockPaywallCreator';
+import VerificationSuccess from './components/VerificationSuccess';
 
 // Lazy load less frequently used components
 const AnalyticsPage = React.lazy(() => import('./components/AnalyticsPage'));
@@ -143,6 +144,14 @@ const AppContent: React.FC = () => {
               element={
                 <PublicRoute>
                   <EmailVerification />
+                </PublicRoute>
+              }
+            />
+            <Route
+              path="/verification-success"
+              element={
+                <PublicRoute>
+                  <VerificationSuccess />
                 </PublicRoute>
               }
             />

@@ -623,7 +623,7 @@ const CustomerPaywallView: React.FC = () => {
                             </div>
                             <div className="ml-3">
                               <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                John Doe
+                                {user?.full_name || user?.name || user?.email?.split('@')[0] || 'Customer'}
                               </p>
                               <div className="flex items-center">
                                 <svg

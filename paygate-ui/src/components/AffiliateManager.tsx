@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { Affiliate } from '../services/marketingService';
+import marketingService, { type Affiliate } from '../services/marketingService';
 
 const AffiliateManager: React.FC = () => {
   const [affiliates, setAffiliates] = useState<Affiliate[]>([]);
@@ -8,45 +8,22 @@ const AffiliateManager: React.FC = () => {
   const [email, setEmail] = useState('');
   const [commissionRate, setCommissionRate] = useState('10');
 
-  // Mock data for demonstration
   useEffect(() => {
-    const mockAffiliates: Affiliate[] = [
-      {
-        id: '1',
-        name: 'John Smith',
-        email: 'john@example.com',
-        affiliateCode: 'AFF-JOHN',
-        commissionRate: 10,
-        totalEarnings: 250.75,
-        totalReferrals: 15,
-        joinedDate: '2023-05-15',
-        status: 'active',
-      },
-      {
-        id: '2',
-        name: 'Sarah Johnson',
-        email: 'sarah@example.com',
-        affiliateCode: 'AFF-SARAH',
-        commissionRate: 15,
-        totalEarnings: 420.5,
-        totalReferrals: 28,
-        joinedDate: '2023-06-22',
-        status: 'active',
-      },
-      {
-        id: '3',
-        name: 'Mike Williams',
-        email: 'mike@example.com',
-        affiliateCode: 'AFF-MIKE',
-        commissionRate: 8,
-        totalEarnings: 0,
-        totalReferrals: 0,
-        joinedDate: '2023-07-10',
-        status: 'inactive',
-      },
-    ];
+    const fetchAffiliates = async () => {
+      try {
+        // Try to get the user's own affiliate data
+        const affiliate = await marketingService.getMyAffiliate();
+        if (affiliate) {
+          setAffiliates([affiliate]);
+        }
+      } catch (error) {
+        console.error('Error fetching affiliate data:', error);
+        // Fallback to empty array if there's an error
+        setAffiliates([]);
+      }
+    };
 
-    setAffiliates(mockAffiliates);
+    fetchAffiliates();
   }, []);
 
   const handleSubmit = (e: React.FormEvent) => {

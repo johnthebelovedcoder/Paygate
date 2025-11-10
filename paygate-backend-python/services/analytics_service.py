@@ -756,11 +756,17 @@ async def get_revenue_forecast(db: AsyncSession, owner_id: int) -> RevenueForeca
         elif recent_avg < previous_avg * 0.9:
             trend = "decreasing"
     
-    return RevenueForecast(
-        forecast=[RevenueForecastData(**item) for item in forecast_data],
-        trend=trend,
-        confidence=0.85  # 85% confidence level
-    )
+    # Return the forecast data directly as a list of forecast items
+    forecast_list = []
+    for item in forecast_data:
+        forecast_list.append(RevenueForecast(
+            date=datetime.fromisoformat(item['date'].split('T')[0]),  # Convert to date object
+            predicted_revenue=item['forecasted_revenue'],
+            confidence_lower=item['confidence_interval_low'],
+            confidence_upper=item['confidence_interval_high']
+        ))
+    
+    return forecast_list
 
 
 async def trigger_realtime_analytics_update(event_type: str, data: Dict[str, Any], owner_id: int = None):

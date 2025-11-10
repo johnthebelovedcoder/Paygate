@@ -112,6 +112,45 @@ async def get_affiliates(
     return []
 
 
+@router.get("/marketing/my-affiliate", response_model=Affiliate)
+async def get_my_affiliate(
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    # Get the affiliate data for the current user
+    affiliate = await marketing_service.get_affiliate_by_user_id(db, current_user.id)
+    if not affiliate:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Affiliate data not found for this user"
+        )
+    return affiliate
+
+
+@router.post("/marketing/my-affiliate", response_model=Affiliate)
+async def create_my_affiliate(
+    affiliate: AffiliateCreate,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    # Create affiliate data for the current user
+    # First check if user already has affiliate data
+    existing_affiliate = await marketing_service.get_affiliate_by_user_id(db, current_user.id)
+    if existing_affiliate:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You already have affiliate data"
+        )
+    
+    # Set the user_id to the current user
+    affiliate_dict = affiliate.model_dump()
+    affiliate_dict['user_id'] = current_user.id
+    affiliate_create = AffiliateCreate(**affiliate_dict)
+    
+    created_affiliate = await marketing_service.create_affiliate(db, affiliate_create)
+    return created_affiliate
+
+
 @router.post("/marketing/affiliates", response_model=Affiliate)
 async def create_affiliate(
     affiliate: AffiliateCreate,

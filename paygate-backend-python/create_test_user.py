@@ -13,10 +13,15 @@ def create_test_user():
     conn = sqlite3.connect('paygate.db')
     cursor = conn.cursor()
     
-    # Create a test user with a known password
-    email = 'testuser@paygate.com'
-    name = 'Test User'
-    password = 'securepassword123'  # Use a known password for testing
+    # Create a test user with a known password from environment or generate one
+    import os
+    import secrets
+    import string
+    password = os.getenv("TEST_USER_PASSWORD", 
+                        ''.join(secrets.choice(string.ascii_letters + string.digits + string.punctuation) 
+                               for _ in range(12)))
+    email = os.getenv("TEST_USER_EMAIL", 'testuser@paygate.com')
+    name = os.getenv("TEST_USER_NAME", 'Test User')
     hashed_password = pwd_context.hash(password)
     
     # Insert the user

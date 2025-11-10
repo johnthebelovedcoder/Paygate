@@ -21,7 +21,7 @@ interface SubscriptionItem {
 const CustomerPortal: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'purchases' | 'subscriptions' | 'account'>('purchases');
   const [email, setEmail] = useState('customer@example.com');
-  const [name, setName] = useState('John Doe');
+  const [name, setName] = useState(user?.full_name || user?.name || '');
 
   // Mock purchase history data
   const purchaseHistory: PurchaseHistoryItem[] = [

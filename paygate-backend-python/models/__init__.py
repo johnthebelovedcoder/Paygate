@@ -13,6 +13,7 @@ from .billing import SubscriptionPlan, Subscription, Invoice, Coupon, BillingInf
 from .notification import Notification, NotificationPreference
 from .support import SupportCategory, SupportTicket, SupportTicketResponse
 from .marketing import DiscountCode, Affiliate, AffiliateReferral, MarketingCampaign, EmailList, EmailSubscriber
+from .audit import AuditLog, DataChangeLog
 from .token_blacklist import TokenBlacklist
 
 __all__ = [

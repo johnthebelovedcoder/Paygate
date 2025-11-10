@@ -68,6 +68,9 @@ const Signup: React.FC = () => {
     if (!/(?=.*\d)/.test(passwordValue)) {
       return 'Password must contain at least one number';
     }
+    if (!/(?=.*[!@#$%^&*(),.?":{}|<>])/.test(passwordValue)) {
+      return 'Password must contain at least one special character';
+    }
     return '';
   };
 
@@ -146,8 +149,12 @@ const Signup: React.FC = () => {
 
     try {
       // Pass all the collected information to the register function
-      await register(name, email, password, { country, currency, userType, contentTypes });
-      // Redirect to dashboard after successful signup
+      const result = await register(name, email, password, { country, currency, userType, contentTypes });
+      if (result.requiresVerification) {
+        // Already redirected to verification page in the context
+        return;
+      }
+      // Redirect to dashboard after successful signup (for cases where verification isn't required)
       navigate('/');
     } catch (err: unknown) {
       if (isAxiosError(err)) {
@@ -596,6 +603,74 @@ const Signup: React.FC = () => {
                         </svg>
                       )}
                       Contains number
+                    </li>
+                    <li
+                      className={`flex items-center text-sm ${/(?=.*[!@#$%^&*(),.?":{}|<>])/.test(password) ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}
+                    >
+                      {/(?=.*[!@#$%^&*(),.?":{}|<>])/.test(password) ? (
+                        <svg
+                          className="h-4 w-4 mr-2"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                      ) : (
+                        <svg
+                          className="h-4 w-4 mr-2"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      )}
+                      Contains special character
+                    </li>
+                    <li
+                      className={`flex items-center text-sm ${/(?=.*[!@#$%^&*(),.?":{}|<>])/.test(password) ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}
+                    >
+                      {/(?=.*[!@#$%^&*(),.?":{}|<>])/.test(password) ? (
+                        <svg
+                          className="h-4 w-4 mr-2"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                      ) : (
+                        <svg
+                          className="h-4 w-4 mr-2"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      )}
+                      Contains special character
                     </li>
                   </ul>
                 </div>

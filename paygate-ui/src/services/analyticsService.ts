@@ -113,34 +113,15 @@ class AnalyticsService {
 
   // Get traffic sources
   async getTrafficSources(): Promise<TrafficSource[]> {
-    // TODO: Implement this in the backend
-    return [
-      {
-        id: '1',
-        name: 'Direct',
-        visits: 1000,
-        conversions: 100,
-        revenue: 5000,
-        conversionRate: 10,
-      },
-      {
-        id: '2',
-        name: 'Social Media',
-        visits: 800,
-        conversions: 80,
-        revenue: 4000,
-        conversionRate: 10,
-      },
-      { id: '3', name: 'Email', visits: 600, conversions: 120, revenue: 6000, conversionRate: 20 },
-      {
-        id: '4',
-        name: 'Referral',
-        visits: 400,
-        conversions: 40,
-        revenue: 2000,
-        conversionRate: 10,
-      },
-    ];
+    try {
+      const response = await this.api.get<AnalyticsResponse<TrafficSource[]>>('/analytics/traffic-sources');
+      return response.data || [];
+    } catch (error) {
+      const err = error as Error;
+      console.error('Error fetching traffic sources:', err);
+      // Return empty array as fallback
+      return [];
+    }
   }
 
   // Get customer data
@@ -165,108 +146,93 @@ class AnalyticsService {
     }
   }
   async getTrafficData(): Promise<{ name: string; value: number }[]> {
-    // TODO: Implement this in the backend
-    return [
-      { name: 'Direct', value: 42 },
-      { name: 'Social Media', value: 28 },
-      { name: 'Email', value: 18 },
-      { name: 'Referral', value: 12 },
-    ];
+    try {
+      const response = await this.api.get<AnalyticsResponse<{ name: string; value: number }[]>>('/analytics/traffic-data');
+      return response.data || [];
+    } catch (error) {
+      const err = error as Error;
+      console.error('Error fetching traffic data:', err);
+      // Return empty array as fallback
+      return [];
+    }
   }
 
   async getPerformanceData(): Promise<
     { subject: string; A: number; B: number; fullMark: number }[]
   > {
-    // TODO: Implement this in the backend
-    return [
-      { subject: 'Revenue', A: 120, B: 110, fullMark: 150 },
-      { subject: 'Sales', A: 98, B: 130, fullMark: 150 },
-      { subject: 'Conversion', A: 86, B: 130, fullMark: 150 },
-      { subject: 'Retention', A: 99, B: 100, fullMark: 150 },
-      { subject: 'Satisfaction', A: 85, B: 90, fullMark: 150 },
-      { subject: 'Growth', A: 65, B: 85, fullMark: 150 },
-    ];
+    try {
+      const response = await this.api.get<AnalyticsResponse<{ subject: string; A: number; B: number; fullMark: number }[]>>('/analytics/performance-data');
+      return response.data || [];
+    } catch (error) {
+      const err = error as Error;
+      console.error('Error fetching performance data:', err);
+      // Return empty array as fallback
+      return [];
+    }
   }
   async getGeographicData(): Promise<GeographicData[]> {
-    // TODO: Implement this in the backend
-    return [
-      {
-        country: 'United States',
-        countryCode: 'US',
-        sales: 1000,
-        revenue: 35000,
-        currency: 'USD',
-        percentage: 35,
-      },
-      {
-        country: 'United Kingdom',
-        countryCode: 'GB',
-        sales: 500,
-        revenue: 15000,
-        currency: 'GBP',
-        percentage: 15,
-      },
-      {
-        country: 'Canada',
-        countryCode: 'CA',
-        sales: 400,
-        revenue: 12000,
-        currency: 'CAD',
-        percentage: 12,
-      },
-      {
-        country: 'Germany',
-        countryCode: 'DE',
-        sales: 300,
-        revenue: 10000,
-        currency: 'EUR',
-        percentage: 10,
-      },
-      {
-        country: 'Australia',
-        countryCode: 'AU',
-        sales: 200,
-        revenue: 8000,
-        currency: 'AUD',
-        percentage: 8,
-      },
-      {
-        country: 'Other',
-        countryCode: 'XX',
-        sales: 600,
-        revenue: 20000,
-        currency: 'USD',
-        percentage: 20,
-      },
-    ];
+    try {
+      const response = await this.api.get<AnalyticsResponse<GeographicData[]>>('/analytics/geographic-data');
+      return response.data || [];
+    } catch (error) {
+      const err = error as Error;
+      console.error('Error fetching geographic data:', err);
+      // Return empty array as fallback
+      return [];
+    }
   }
   async getRevenueBreakdown(): Promise<RevenueBreakdown> {
-    // TODO: Implement this in the backend
-    return {
-      revenueByTime: [],
-      revenueByProduct: [],
-      revenueBySegment: [],
-    };
+    try {
+      const response = await this.api.get<AnalyticsResponse<RevenueBreakdown>>('/analytics/revenue-breakdown');
+      return response.data || {
+        revenueByTime: [],
+        revenueByProduct: [],
+        revenueBySegment: [],
+      };
+    } catch (error) {
+      const err = error as Error;
+      console.error('Error fetching revenue breakdown:', err);
+      // Return default breakdown as fallback
+      return {
+        revenueByTime: [],
+        revenueByProduct: [],
+        revenueBySegment: [],
+      };
+    }
   }
 
   async getConversionFunnel(): Promise<ConversionFunnel> {
-    // TODO: Implement this in the backend
-    return {
-      totalViews: 15420,
-      totalPurchases: 921,
-      conversionRate: 6,
-      dropOffPoints: [
-        { step: 'Visitors', count: 15420, dropOff: 5190 },
-        { step: 'Page Views', count: 10230, dropOff: 8388 },
-        { step: 'Added to Cart', count: 1842, dropOff: 921 },
-        { step: 'Purchased', count: 921, dropOff: 0 },
-      ],
-    };
+    try {
+      const response = await this.api.get<AnalyticsResponse<ConversionFunnel>>('/analytics/conversion-funnel');
+      return response.data || {
+        totalViews: 0,
+        totalPurchases: 0,
+        conversionRate: 0,
+        dropOffPoints: [],
+      };
+    } catch (error) {
+      const err = error as Error;
+      console.error('Error fetching conversion funnel:', err);
+      // Return default funnel as fallback
+      return {
+        totalViews: 0,
+        totalPurchases: 0,
+        conversionRate: 0,
+        dropOffPoints: [],
+      };
+    }
   }
 
   async getCustomerLifetimeValues(): Promise<CustomerLifetimeValue[]> {
-    // TODO: Implement this in the backend
-    return [];
+    try {
+      const response = await this.api.get<AnalyticsResponse<CustomerLifetimeValue[]>>('/analytics/customer-lifetime-values');
+      return response.data || [];
+    } catch (error) {
+      const err = error as Error;
+      console.error('Error fetching customer lifetime values:', err);
+      // Return empty array as fallback
+      return [];
+    }
   }
 
   async getRevenueForecast(): Promise<RevenueForecast> {

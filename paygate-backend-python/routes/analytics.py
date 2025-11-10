@@ -1,5 +1,6 @@
 import logging
 from typing import List
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status, WebSocket, WebSocketDisconnect
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,8 +9,19 @@ from config.database import get_db
 from models.user import User
 from schemas.analytics import (
     DashboardStats, RevenueData, DailyRevenueData, TopPaywall,
-    RevenueSummary, PaywallPerformance, TopCustomer, RevenueForecast, RevenueForecastData
+    RevenueSummary, PaywallPerformance, TopCustomer, RevenueForecastData
 )
+
+# Define the RevenueForecast model if it doesn't exist
+from pydantic import BaseModel
+from typing import List
+from datetime import date
+
+class RevenueForecast(BaseModel):
+    date: date
+    predicted_revenue: float
+    confidence_lower: float
+    confidence_upper: float
 from services import analytics_service
 from utils.auth import get_current_user
 from utils.websocket_broadcast import register_websocket_connection, unregister_websocket_connection, broadcast_to_websocket_clients
@@ -126,8 +138,8 @@ async def update_creator_content_protection_settings(
     return {"status": "success", "settings": updated_settings}
 
 
-@router.get("/analytics/revenue-forecast", response_model=List[RevenueForecast])
-async def get_revenue_forecast_public(
+@router.get("/analytics/creator/revenue-forecast", response_model=List[RevenueForecast])
+async def get_creator_revenue_forecast(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
@@ -135,13 +147,80 @@ async def get_revenue_forecast_public(
     return forecast
 
 
-@router.get("/analytics/creator/revenue-forecast", response_model=List[RevenueForecast])
+@router.get("/analytics/revenue-forecast", response_model=List[RevenueForecast])
 async def get_revenue_forecast(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
+    """
+    Get revenue forecast data for the authenticated user
+    This is the main endpoint serving /api/analytics/revenue-forecast requests
+    """
     forecast = await analytics_service.get_revenue_forecast(db, current_user.id)
     return forecast
+
+
+@router.get("/analytics/traffic-sources", response_model=List[TrafficSource])
+async def get_traffic_sources(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    traffic_sources = await analytics_service.get_traffic_sources(db, current_user.id)
+    return traffic_sources
+
+
+@router.get("/analytics/traffic-data", response_model=List[dict])
+async def get_traffic_data(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    traffic_data = await analytics_service.get_traffic_data(db, current_user.id)
+    return traffic_data
+
+
+@router.get("/analytics/performance-data", response_model=List[dict])
+async def get_performance_data(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    performance_data = await analytics_service.get_performance_data(db, current_user.id)
+    return performance_data
+
+
+@router.get("/analytics/geographic-data", response_model=List[GeographicData])
+async def get_geographic_data(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    geographic_data = await analytics_service.get_geographic_data(db, current_user.id)
+    return geographic_data
+
+
+@router.get("/analytics/revenue-breakdown", response_model=RevenueBreakdown)
+async def get_revenue_breakdown(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    revenue_breakdown = await analytics_service.get_revenue_breakdown(db, current_user.id)
+    return revenue_breakdown
+
+
+@router.get("/analytics/conversion-funnel", response_model=dict)
+async def get_conversion_funnel(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    conversion_funnel = await analytics_service.get_conversion_funnel(db, current_user.id)
+    return conversion_funnel
+
+
+@router.get("/analytics/customer-lifetime-values", response_model=List[dict])
+async def get_customer_lifetime_values(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    clv_data = await analytics_service.get_customer_lifetime_values(db, current_user.id)
+    return clv_data
 
 
 @router.websocket("/ws/analytics")

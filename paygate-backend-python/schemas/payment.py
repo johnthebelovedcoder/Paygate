@@ -1,19 +1,46 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime
+from utils.validation import sanitize_string, is_valid_email
 
 
 class PaymentBase(BaseModel):
-    amount: float
-    currency: str = "NGN"
+    amount: float = Field(..., ge=0.01, le=1000000.0)  # Minimum 0.01, maximum 1,000,000
+    currency: str = Field("NGN", min_length=3, max_length=3)
     status: str = "pending"  # pending, completed, failed, refunded
-    paywall_id: Optional[int] = None
-    customer_email: str
-    customer_name: Optional[str] = None
-    reference: str
-    payment_method: Optional[str] = None
-    channel: Optional[str] = None
+    paywall_id: Optional[int] = Field(None, ge=1)  # Must be a positive integer if provided
+    customer_email: str = Field(..., max_length=255)
+    customer_name: Optional[str] = Field(None, max_length=100)
+    reference: str = Field(..., min_length=1, max_length=100)
+    payment_method: Optional[str] = Field(None, max_length=50)
+    channel: Optional[str] = Field(None, max_length=50)
     gateway_response: Optional[Dict[str, Any]] = None
+
+    @validator('customer_email')
+    def validate_email(cls, v):
+        if not is_valid_email(v):
+            raise ValueError('Invalid email format')
+        return v
+
+    @validator('customer_name', 'payment_method', 'channel', pre=True)
+    def validate_and_sanitize_strings(cls, v):
+        if v is None:
+            return v
+        return sanitize_string(v)
+
+    @validator('currency', pre=True)
+    def validate_currency_format(cls, v):
+        # Basic ISO 4217 currency code validation
+        if not v.isalpha() or len(v) != 3:
+            raise ValueError('Currency must be a valid 3-letter ISO code')
+        return v.upper()
+
+    @validator('status', pre=True)
+    def validate_payment_status(cls, v):
+        allowed_statuses = ['pending', 'completed', 'failed', 'refunded', 'cancelled']
+        if v not in allowed_statuses:
+            raise ValueError(f'Status must be one of: {", ".join(allowed_statuses)}')
+        return v.lower()
 
 
 class PaymentCreate(PaymentBase):
@@ -35,13 +62,32 @@ class Payment(PaymentBase):
 
 
 class CreatePaymentRequest(BaseModel):
-    paywall_id: int
-    amount: float
-    currency: str
-    customer_email: str
-    customer_name: Optional[str] = None
-    payment_method: Optional[str] = None
-    channel: Optional[str] = None
+    paywall_id: int = Field(..., gt=0)
+    amount: float = Field(..., ge=0.01, le=1000000.0)
+    currency: str = Field("NGN", min_length=3, max_length=3)
+    customer_email: str = Field(..., max_length=255)
+    customer_name: Optional[str] = Field(None, max_length=100)
+    payment_method: Optional[str] = Field(None, max_length=50)
+    channel: Optional[str] = Field(None, max_length=50)
+
+    @validator('customer_email')
+    def validate_email(cls, v):
+        if not is_valid_email(v):
+            raise ValueError('Invalid email format')
+        return v
+
+    @validator('customer_name', 'payment_method', 'channel', pre=True)
+    def validate_and_sanitize_strings(cls, v):
+        if v is None:
+            return v
+        return sanitize_string(v)
+
+    @validator('currency', pre=True)
+    def validate_currency_format(cls, v):
+        # Basic ISO 4217 currency code validation
+        if not v.isalpha() or len(v) != 3:
+            raise ValueError('Currency must be a valid 3-letter ISO code')
+        return v.upper()
 
 
 class PaystackInitializeResponse(BaseModel):

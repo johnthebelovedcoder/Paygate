@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from config.database import get_db
@@ -6,18 +6,23 @@ from models import User
 from schemas import *
 from services import user_service, content_service, token_service
 from utils.auth import get_current_user, security
+from config.settings import settings
 from datetime import timedelta, datetime
 import uuid
 import re
 import jwt
+from jwt import PyJWTError as JWTError
 import secrets
+
+# Import security monitoring
+from utils.security_monitoring import security_monitor, monitor_failed_login
 
 router = APIRouter()
 
 # Email validation regex
 EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
 
-@router.post("/auth/register", response_model=TokenResponse)
+@router.post("/auth/register", response_model=dict)
 async def register_user(user: UserCreate, request: Request, db: AsyncSession = Depends(get_db)):
     # Log the incoming request
     print("\n=== Registration Request ===")
@@ -68,7 +73,6 @@ async def register_user(user: UserCreate, request: Request, db: AsyncSession = D
     # Create new user
     db_user = await user_service.create_user(db, user)
     
-    # Create access and refresh tokens
     access_token_expires = timedelta(minutes=30)
     access_token = user_service.create_access_token(
         data={"sub": db_user.email}, expires_delta=access_token_expires
@@ -82,20 +86,22 @@ async def register_user(user: UserCreate, request: Request, db: AsyncSession = D
     # Convert SQLAlchemy model to dictionary to avoid async attribute access issues
     user_data = {
         "id": db_user.id,
-        "name": db_user.name,
         "email": db_user.email,
+        "full_name": db_user.full_name,
         "is_active": db_user.is_active,
         "is_verified": db_user.is_verified,
-        "mfa_enabled": db_user.mfa_enabled if db_user.mfa_enabled is not None else False,
         "role": db_user.role,
-        "country": db_user.country,
-        "currency": db_user.currency,
+        "username": db_user.username,
+        "avatar_url": db_user.avatar_url if hasattr(db_user, 'avatar_url') else None,
+        "bio": db_user.bio if hasattr(db_user, 'bio') else None,
+        "phone": db_user.phone if hasattr(db_user, 'phone') and db_user.phone else None,
+        "company": db_user.company if hasattr(db_user, 'company') else None,
+        "job_title": db_user.job_title if hasattr(db_user, 'job_title') else None,
+        "country": db_user.country if hasattr(db_user, 'country') else None,
+        "currency": db_user.currency if hasattr(db_user, 'currency') else None,
+        "user_type": db_user.user_type if hasattr(db_user, 'user_type') else None,
         "created_at": db_user.created_at,
         "updated_at": db_user.updated_at,
-        "last_login": db_user.last_login,
-        "username": db_user.username,
-        "avatar": db_user.avatar,
-        "user_type": db_user.user_type,
     }
     
     return TokenResponse(
@@ -126,7 +132,6 @@ async def login_user(user_credentials: UserLogin, db: AsyncSession = Depends(get
             detail="Incorrect email or password"
         )
     
-    # Create access and refresh tokens
     access_token_expires = timedelta(minutes=30)
     access_token = user_service.create_access_token(
         data={"sub": user.email}, expires_delta=access_token_expires
@@ -151,20 +156,22 @@ async def login_user(user_credentials: UserLogin, db: AsyncSession = Depends(get
     # Convert SQLAlchemy model to dictionary with proper datetime handling
     user_data = {
         "id": db_user.id,
-        "name": db_user.name,
         "email": db_user.email,
+        "full_name": db_user.full_name,
         "is_active": db_user.is_active,
         "is_verified": db_user.is_verified,
-        "mfa_enabled": db_user.mfa_enabled if db_user.mfa_enabled is not None else False,
         "role": db_user.role,
-        "country": db_user.country,
-        "currency": db_user.currency,
+        "username": db_user.username,
+        "avatar_url": db_user.avatar_url if hasattr(db_user, 'avatar_url') else None,
+        "bio": db_user.bio if hasattr(db_user, 'bio') else None,
+        "phone": db_user.phone if hasattr(db_user, 'phone') and db_user.phone else None,
+        "company": db_user.company if hasattr(db_user, 'company') else None,
+        "job_title": db_user.job_title if hasattr(db_user, 'job_title') else None,
+        "country": db_user.country if hasattr(db_user, 'country') else None,
+        "currency": db_user.currency if hasattr(db_user, 'currency') else None,
+        "user_type": db_user.user_type if hasattr(db_user, 'user_type') else None,
         "created_at": db_user.created_at,  # Keep as datetime object
         "updated_at": db_user.updated_at,  # Keep as datetime object
-        "last_login": db_user.last_login,  # Keep as datetime object
-        "username": db_user.username,
-        "avatar": db_user.avatar,
-        "user_type": db_user.user_type,
     }
     
     return TokenResponse(
@@ -214,20 +221,22 @@ async def refresh_token(refresh_request: RefreshTokenRequest, db: AsyncSession =
     # Convert SQLAlchemy model to dictionary to avoid async attribute access issues
     user_data = {
         "id": user.id,
-        "name": user.name,
         "email": user.email,
+        "full_name": user.full_name,
         "is_active": user.is_active,
         "is_verified": user.is_verified,
-        "mfa_enabled": user.mfa_enabled if user.mfa_enabled is not None else False,
         "role": user.role,
-        "country": user.country,
-        "currency": user.currency,
+        "username": user.username,
+        "avatar_url": user.avatar_url if hasattr(user, 'avatar_url') else None,
+        "bio": user.bio if hasattr(user, 'bio') else None,
+        "phone": user.phone if hasattr(user, 'phone') and user.phone else None,
+        "company": user.company if hasattr(user, 'company') else None,
+        "job_title": user.job_title if hasattr(user, 'job_title') else None,
+        "country": user.country if hasattr(user, 'country') else None,
+        "currency": user.currency if hasattr(user, 'currency') else None,
+        "user_type": user.user_type if hasattr(user, 'user_type') else None,
         "created_at": user.created_at,
         "updated_at": user.updated_at,
-        "last_login": user.last_login,
-        "username": user.username,
-        "avatar": user.avatar,
-        "user_type": user.user_type,
     }
     
     return TokenResponse(
@@ -264,20 +273,22 @@ async def read_users_me(current_user: dict = Depends(get_current_user)):
     # Convert SQLAlchemy model to dictionary to avoid async attribute access issues
     user_data = {
         "id": current_user.id,
-        "name": current_user.name,
         "email": current_user.email,
+        "full_name": current_user.full_name,
         "is_active": current_user.is_active,
         "is_verified": current_user.is_verified,
-        "mfa_enabled": current_user.mfa_enabled if current_user.mfa_enabled is not None else False,
         "role": current_user.role,
-        "country": current_user.country,
-        "currency": current_user.currency,
+        "username": current_user.username,
+        "avatar_url": current_user.avatar_url if hasattr(current_user, 'avatar_url') else None,
+        "bio": current_user.bio if hasattr(current_user, 'bio') else None,
+        "phone": current_user.phone if hasattr(current_user, 'phone') and current_user.phone else None,
+        "company": current_user.company if hasattr(current_user, 'company') else None,
+        "job_title": current_user.job_title if hasattr(current_user, 'job_title') else None,
+        "country": current_user.country if hasattr(current_user, 'country') else None,
+        "currency": current_user.currency if hasattr(current_user, 'currency') else None,
+        "user_type": current_user.user_type if hasattr(current_user, 'user_type') else None,
         "created_at": current_user.created_at,
         "updated_at": current_user.updated_at,
-        "last_login": current_user.last_login,
-        "username": current_user.username,
-        "avatar": current_user.avatar,
-        "user_type": current_user.user_type,
     }
     
     return UserInDB(**user_data)
@@ -298,20 +309,22 @@ async def update_user_profile(
     # Convert SQLAlchemy model to dictionary to avoid async attribute access issues
     user_data = {
         "id": updated_user.id,
-        "name": updated_user.name,
         "email": updated_user.email,
+        "full_name": updated_user.full_name,
         "is_active": updated_user.is_active,
         "is_verified": updated_user.is_verified,
-        "mfa_enabled": updated_user.mfa_enabled if updated_user.mfa_enabled is not None else False,
         "role": updated_user.role,
-        "country": updated_user.country,
-        "currency": updated_user.currency,
+        "username": updated_user.username,
+        "avatar_url": updated_user.avatar_url if hasattr(updated_user, 'avatar_url') else None,
+        "bio": updated_user.bio if hasattr(updated_user, 'bio') else None,
+        "phone": updated_user.phone if hasattr(updated_user, 'phone') and updated_user.phone else None,
+        "company": updated_user.company if hasattr(updated_user, 'company') else None,
+        "job_title": updated_user.job_title if hasattr(updated_user, 'job_title') else None,
+        "country": updated_user.country if hasattr(updated_user, 'country') else None,
+        "currency": updated_user.currency if hasattr(updated_user, 'currency') else None,
+        "user_type": updated_user.user_type if hasattr(updated_user, 'user_type') else None,
         "created_at": updated_user.created_at,
         "updated_at": updated_user.updated_at,
-        "last_login": updated_user.last_login,
-        "username": updated_user.username,
-        "avatar": updated_user.avatar,
-        "user_type": updated_user.user_type,
     }
     
     return UserInDB(**user_data)
@@ -485,7 +498,7 @@ async def verify_email_token(
 ):
     try:
         # Verify the JWT token
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
             raise HTTPException(
@@ -493,16 +506,19 @@ async def verify_email_token(
                 detail="Invalid token"
             )
             
-        # Get user by email
-        user = await get_user_by_email(db, email)
+        # Get user by email using the user service
+        user = await user_service.get_user_by_email(db, email)
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found"
             )
             
-        # Update user's email verification status
-        await update_user(db, user.id, {"email_verified": True})
+        # Update user's email verification status - need to update directly since UserUpdate schema doesn't include email_verified
+        user.is_verified = True
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
         
         return {
             "success": True,
@@ -516,35 +532,6 @@ async def verify_email_token(
         )
 
 
-@router.post("/auth/mfa/setup", response_model=MFASetupResponse)
-async def setup_mfa(
-    current_user: dict = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-):
-    # In a real app, this would generate MFA setup information
-    # For now, return mock data
-    return MFASetupResponse(
-        secret="mock_secret",
-        otp_uri="otpauth://totp/Paygate:user@example.com?secret=mock_secret"
-    )
 
 
-@router.post("/auth/mfa/verify")
-async def verify_mfa(
-    mfa_data: MFAVerifyRequest,
-    current_user: dict = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-):
-    # In a real app, this would verify the MFA code
-    # For now, just return success
-    return {"message": "MFA verified successfully"}
 
-
-@router.get("/auth/verify-email/{token}")
-async def verify_email_token(
-    token: str,
-    db: AsyncSession = Depends(get_db)
-):
-    # In a real app, this would verify the email token
-    # For now, just return success
-    return {"message": "Email verified successfully"}

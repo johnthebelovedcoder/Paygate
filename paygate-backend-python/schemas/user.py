@@ -36,6 +36,9 @@ class UserCreate(UserBase):
     password: str = Field(..., min_length=8, max_length=128)
     username: Optional[str] = Field(None, min_length=1, max_length=50)  # Added username
     name: Optional[str] = Field(None, min_length=1, max_length=100)  # For backward compatibility
+    country: Optional[str] = Field(None, max_length=100)  # Added for registration
+    currency: Optional[str] = Field(None, max_length=10)  # Added for registration
+    user_type: Optional[str] = Field(None, max_length=50)  # Added for registration
 
     @validator('password')
     def validate_password(cls, v):
@@ -58,6 +61,12 @@ class UserCreate(UserBase):
 
     @validator('username', pre=True)
     def validate_and_sanitize_username(cls, v):
+        if v is None:
+            return v
+        return sanitize_string(v)
+
+    @validator('country', 'currency', 'user_type', pre=True)
+    def validate_and_sanitize_optional_fields(cls, v):
         if v is None:
             return v
         return sanitize_string(v)
@@ -103,6 +112,9 @@ class UserInDB(UserBase):
     phone: Optional[str] = None
     company: Optional[str] = None
     job_title: Optional[str] = None
+    country: Optional[str] = None
+    currency: Optional[str] = None
+    user_type: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
 

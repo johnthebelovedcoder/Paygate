@@ -6,6 +6,7 @@ import BillingInformation from './BillingInformation';
 import Notification from './Notifications';
 import { useTheme } from '../contexts';
 import { useNotifications } from '../contexts/NotificationContext';
+import { useAuth } from '../contexts/AuthContext';
 import userPreferencesService from '../services/userPreferencesService';
 import avatarService from '../services/avatarService';
 import PayoutPreferences, { PayoutSettings } from './PayoutPreferences';
@@ -62,15 +63,16 @@ interface SettingsHistoryState {
 const Settings: React.FC = () => {
   const { darkMode, toggleDarkMode } = useTheme();
   const { showNotification } = useNotifications();
+  const { user } = useAuth(); // Get user from auth context
   const [activeTab, setActiveTab] = useState('profile');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   const [profile, setProfile] = useState<ProfileState>({
-    name: 'John Doe',
-    email: 'john@example.com',
-    bio: 'Content creator and educator',
+    name: user?.full_name || user?.name || user?.email?.split('@')[0] || '',
+    email: user?.email || 'john@example.com',
+    bio: user?.bio || 'Content creator and educator',
   });
 
   const [password, setPassword] = useState<PasswordState>({

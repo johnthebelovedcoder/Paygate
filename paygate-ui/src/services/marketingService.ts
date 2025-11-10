@@ -184,6 +184,46 @@ class MarketingService {
     }
   }
 
+  // Get affiliate data for the current user
+  async getMyAffiliate(): Promise<Affiliate | null> {
+    try {
+      const response = await apiService.get<MarketingResponse<Affiliate>>('/marketing/my-affiliate');
+      return response.data || null;
+    } catch (error) {
+      const err = error as Error;
+      console.error('Error fetching my affiliate data:', err);
+      // Return null as fallback
+      return null;
+    }
+  }
+
+  // Create affiliate data for the current user
+  async createMyAffiliate(
+    affiliate: Omit<
+      Affiliate,
+      'id' | 'affiliateCode' | 'totalEarnings' | 'totalReferrals' | 'joinedDate' | 'status'
+    >
+  ): Promise<Affiliate> {
+    try {
+      const response = await apiService.post<MarketingResponse<Affiliate>>(
+        '/marketing/my-affiliate',
+        {
+          ...affiliate,
+          status: 'active',
+        }
+      );
+      return response.data as Affiliate;
+    } catch (error: unknown) {
+      console.error('Error creating my affiliate:', error);
+      if (isAxiosError(error) && error.response?.data) {
+        throw error.response.data;
+      } else if (error instanceof Error) {
+        throw { message: error.message };
+      }
+      throw { message: 'Failed to create affiliate' };
+    }
+  }
+
   // Validate a discount code
   async validateDiscountCode(code: string): Promise<DiscountCode | null> {
     try {

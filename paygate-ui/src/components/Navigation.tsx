@@ -9,7 +9,7 @@ import ConfirmationModal from './ConfirmationModal';
 
 const Navigation: React.FC = () => {
   const location = useLocation();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const { darkMode, toggleDarkMode } = useTheme();
   const { unreadCount } = useNotifications();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -229,7 +229,11 @@ const Navigation: React.FC = () => {
                 >
                   <span className="sr-only">Open user menu</span>
                   <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
-                    <span className="text-indigo-800 font-medium">JD</span>
+                    <span className="text-indigo-800 font-medium">
+                      {user?.full_name || user?.name 
+                        ? (user.full_name || user.name || '').split(' ').slice(0, 2).map(n => n.charAt(0)).join('').toUpperCase() 
+                        : (user?.email || 'U')[0].toUpperCase()}
+                    </span>
                   </div>
                 </button>
               </div>
@@ -237,8 +241,8 @@ const Navigation: React.FC = () => {
               {userMenuOpen && (
                 <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 dark:ring-gray-700">
                   <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">John Doe</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-300">john@example.com</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">{user?.full_name || user?.name || user?.email.split('@')[0]}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-300">{user?.email}</p>
                   </div>
                   <Link
                     to="/profile"
@@ -350,13 +354,17 @@ const Navigation: React.FC = () => {
               <div className="flex items-center mb-4">
                 <div className="flex-shrink-0">
                   <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center dark:bg-gray-700">
-                    <span className="text-indigo-800 font-medium dark:text-indigo-200">JD</span>
+                    <span className="text-indigo-800 font-medium dark:text-indigo-200">
+                      {user?.full_name || user?.name 
+                        ? (user.full_name || user.name || '').split(' ').slice(0, 2).map(n => n.charAt(0)).join('').toUpperCase() 
+                        : (user?.email || 'U')[0].toUpperCase()}
+                    </span>
                   </div>
                 </div>
                 <div className="ml-3 overflow-hidden">
-                  <div className="text-base font-medium text-gray-800 dark:text-white truncate">John Doe</div>
+                  <div className="text-base font-medium text-gray-800 dark:text-white truncate">{user?.full_name || user?.name || user?.email?.split('@')[0]}</div>
                   <div className="text-sm font-medium text-gray-500 dark:text-gray-300 truncate">
-                    john@example.com
+                    {user?.email}
                   </div>
                 </div>
               </div>

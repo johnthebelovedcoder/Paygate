@@ -130,18 +130,18 @@ const useAnalytics = (): UseAnalyticsReturn => {
       setError(null);
     } catch (error) {
       console.error('Error fetching stats:', error);
-      // Use mock data as fallback to prevent hanging
-      const mockStats: DashboardStats = {
-        totalRevenue: 12450,
-        totalSales: 127,
-        totalVisitors: 2450,
-        conversionRate: 5.2,
-        avgOrderValue: 98.03,
-        activePaywalls: 5,
-        recentPayments: 12,
-        totalCustomers: 892,
+      // Use zero values for new users as fallback
+      const zeroStats: DashboardStats = {
+        totalRevenue: 0,
+        totalSales: 0,
+        totalVisitors: 0,
+        conversionRate: 0,
+        avgOrderValue: 0,
+        activePaywalls: 0,
+        recentPayments: 0,
+        totalCustomers: 0,
       };
-      setStats(mockStats);
+      setStats(zeroStats);
       setError(null); // Don't set error if we have fallback data
     } finally {
       setLoadingState('stats', false);
@@ -174,12 +174,12 @@ const useAnalytics = (): UseAnalyticsReturn => {
       setError(null);
     } catch (error) {
       console.error('Error fetching revenue data:', error);
-      // Use mock data as fallback to prevent hanging
-      const mockRevenueData: RevenueData[] = Array.from({ length: 7 }, (_, i) => ({
+      // Use zero data for new users as fallback
+      const zeroRevenueData: RevenueData[] = Array.from({ length: 7 }, (_, i) => ({
         date: new Date(Date.now() - (6 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        revenue: Math.floor(Math.random() * 1000) + 500
+        revenue: 0
       }));
-      setRevenueData(mockRevenueData);
+      setRevenueData(zeroRevenueData);
       setError(null); // Don't set error if we have fallback data
     } finally {
       setLoadingState('revenue', false);
@@ -215,38 +215,38 @@ const useAnalytics = (): UseAnalyticsReturn => {
       const mockTopPaywalls: TopPaywall[] = [
         {
           id: '1',
-          name: 'Premium Content',
-          revenue: 4500,
-          sales: 45,
-          conversionRate: 8.5
+          name: 'No Paywalls Yet',
+          revenue: 0,
+          sales: 0,
+          conversionRate: 0
         },
         {
           id: '2',
-          name: 'Basic Subscription',
-          revenue: 3200,
-          sales: 64,
-          conversionRate: 6.2
+          name: 'No Paywalls Yet',
+          revenue: 0,
+          sales: 0,
+          conversionRate: 0
         },
         {
           id: '3',
-          name: 'One-time Purchase',
-          revenue: 2800,
-          sales: 28,
-          conversionRate: 5.1
+          name: 'No Paywalls Yet',
+          revenue: 0,
+          sales: 0,
+          conversionRate: 0
         },
         {
           id: '4',
-          name: 'Service Package',
-          revenue: 1200,
-          sales: 18,
-          conversionRate: 4.7
+          name: 'No Paywalls Yet',
+          revenue: 0,
+          sales: 0,
+          conversionRate: 0
         },
         {
           id: '5',
-          name: 'Digital Download',
-          revenue: 750,
-          sales: 12,
-          conversionRate: 3.9
+          name: 'No Paywalls Yet',
+          revenue: 0,
+          sales: 0,
+          conversionRate: 0
         }
       ];
       setTopPaywalls(mockTopPaywalls);
@@ -281,15 +281,15 @@ const useAnalytics = (): UseAnalyticsReturn => {
       setError(null);
     } catch (error) {
       console.error('Error fetching customer data:', error);
-      // Use mock data as fallback to prevent hanging
-      const mockCustomerData: CustomerData = {
-        totalCustomers: 892,
+      // Use zero data for new users as fallback
+      const zeroCustomerData: CustomerData = {
+        totalCustomers: 0,
         customerGrowth: Array.from({ length: 12 }, (_, i) => ({
           date: new Date(Date.now() - (11 - i) * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          count: Math.floor(Math.random() * 100) + 50
+          count: 0
         }))
       };
-      setCustomerData(mockCustomerData);
+      setCustomerData(zeroCustomerData);
       setError(null); // Don't set error if we have fallback data
     } finally {
       setLoadingState('customers', false);

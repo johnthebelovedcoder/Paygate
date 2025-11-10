@@ -307,10 +307,10 @@ class EnhancedAnalyticsService {
       );
     } catch (error) {
       console.error('Error in getRevenueData:', error);
-      // Return sample data as fallback to provide meaningful visualization
+      // Return zero data as fallback for new users
       const fallbackData: RevenueData[] = Array.from({ length: 7 }, (_, i) => ({
         date: new Date(Date.now() - (6 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        revenue: Math.floor(Math.random() * 1000) // Random revenue data for visual purposes
+        revenue: 0
       }));
       // Cache the fallback to prevent repeated failed requests in the short term
       cache.set(cacheKey, fallbackData, 60); // Cache fallback for 1 minute
@@ -355,13 +355,13 @@ class EnhancedAnalyticsService {
       );
     } catch (error) {
       console.error('Error in getTopPaywalls:', error);
-      // Return sample data as fallback to provide meaningful visualization
+      // Return zero data as fallback for new users
       const fallbackData: TopPaywall[] = Array.from({ length: limit }, (_, i) => ({
-        id: `fallback-${i+1}`,
-        name: `Sample Paywall ${i+1}`,
-        revenue: Math.floor(Math.random() * 5000),
-        sales: Math.floor(Math.random() * 100),
-        conversionRate: parseFloat((Math.random() * 10).toFixed(2))
+        id: `empty-${i+1}`,
+        name: 'No Paywalls Yet',
+        revenue: 0,
+        sales: 0,
+        conversionRate: 0
       }));
       // Cache the fallback to prevent repeated failed requests in the short term
       cache.set(cacheKey, fallbackData, 60); // Cache fallback for 1 minute
@@ -404,10 +404,10 @@ class EnhancedAnalyticsService {
       console.error('Error in getCustomerData:', error);
       // Return sample customer data as fallback to provide meaningful visualization
       const fallbackData: CustomerData = {
-        totalCustomers: Math.floor(Math.random() * 1000), // Random customer count
+        totalCustomers: 0, // Zero customers for new users
         customerGrowth: Array.from({ length: 12 }, (_, i) => ({
           date: new Date(Date.now() - (11 - i) * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          count: Math.floor(Math.random() * 100)
+          count: 0
         }))
       };
       // Cache the fallback to prevent repeated failed requests in the short term

@@ -30,35 +30,7 @@ interface TopPaywall {
   revenue: number;
 }
 
-// Mock data for the dashboard
-const mockStats: DashboardStats = {
-  totalRevenue: 12450.75,
-  totalSales: 127,
-  totalVisitors: 2450,
-  conversionRate: 5.2,
-  avgOrderValue: 98.03,
-  activePaywalls: 5,
-  recentPayments: 12,
-  totalCustomers: 892,
-};
-
-const mockRevenueData: RevenueData[] = [
-  { date: '2023-01-01', revenue: 1200 },
-  { date: '2023-01-02', revenue: 1800 },
-  { date: '2023-01-03', revenue: 1500 },
-  { date: '2023-01-04', revenue: 2100 },
-  { date: '2023-01-05', revenue: 1900 },
-  { date: '2023-01-06', revenue: 2300 },
-  { date: '2023-01-07', revenue: 2700 },
-];
-
-const mockTopPaywalls: TopPaywall[] = [
-  { id: '1', title: 'Premium Content', sales: 45, revenue: 4500 },
-  { id: '2', title: 'Basic Subscription', sales: 64, revenue: 3200 },
-  { id: '3', title: 'One-time Purchase', sales: 28, revenue: 2800 },
-  { id: '4', title: 'Service Package', sales: 18, revenue: 1200 },
-  { id: '5', title: 'Digital Download', sales: 12, revenue: 750 },
-];
+// Remove mock data constants
 
 const SimpleDashboard: React.FC = () => {
   const { paywalls } = useAppData();
@@ -518,7 +490,7 @@ const SimpleDashboard: React.FC = () => {
                     <tbody className="divide-y divide-gray-200 bg-white">
                       <tr>
                         <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
-                          John Doe
+                          {user?.full_name || user?.name || user?.email.split('@')[0]}
                         </td>
                         <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                           john@example.com

@@ -31,7 +31,14 @@ def create_admin_user():
             return
         
         # Create a new admin user
-        hashed_password = pwd_context.hash("password123")  # Default password
+        # Use environment variable for default password, fallback to a secure random one
+        import os
+        import secrets
+        import string
+        default_password = os.getenv("DEFAULT_ADMIN_PASSWORD", 
+                                   ''.join(secrets.choice(string.ascii_letters + string.digits + string.punctuation) 
+                                          for _ in range(16)))
+        hashed_password = pwd_context.hash(default_password)
         admin_user = User(
             name="Admin User",
             email="admin@example.com",
@@ -49,7 +56,7 @@ def create_admin_user():
         
         print(f'Admin user created successfully with ID: {admin_user.id}')
         print(f'Email: {admin_user.email}')
-        print(f'Password: password123 (hashed)')
+        print(f'Password: {default_password} (hashed)')
         
     except Exception as e:
         print(f'Error creating admin user: {str(e)}')
